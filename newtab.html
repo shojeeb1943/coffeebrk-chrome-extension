@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab — CoffeeBrk</title>
+  <meta name="description" content="Your personalized new tab with search and the latest news from CoffeeBrk.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <!-- ===== TOP BAR ===== -->
+  <header class="top-bar">
+    <div class="brand">
+      <img src="icons/icon-48.png" alt="CoffeeBrk" class="brand-icon">
+      <span class="brand-name">coffeebrk</span>
+    </div>
+    <span id="greeting" class="greeting"></span>
+  </header>
+
+  <!-- ===== HERO / SEARCH ===== -->
+  <section class="hero">
+    <form id="search-form" class="search-box" action="https://www.google.com/search" method="GET" autocomplete="off">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search-input" type="text" name="q" placeholder="Search with Google" autofocus>
+    </form>
+  </section>
+
+  <!-- ===== QUICK ACCESS ===== -->
+  <section class="shortcuts">
+    <a href="https://mail.google.com" class="shortcut" title="Gmail">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#EA4335,#FBBC05)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M20 18h-2V9.25L12 13 6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20v12z"/></svg>
+      </div>
+      <span>Gmail</span>
+    </a>
+    <a href="https://youtube.com" class="shortcut" title="YouTube">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF0000,#cc0000)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M10 15l5.19-3L10 9v6zm11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+      </div>
+      <span>YouTube</span>
+    </a>
+    <a href="https://github.com" class="shortcut" title="GitHub">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#333,#24292e)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.164 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+      </div>
+      <span>GitHub</span>
+    </a>
+    <a href="https://x.com" class="shortcut" title="X (Twitter)">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#1a1a2e,#16213e)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </div>
+      <span>X</span>
+    </a>
+    <a href="https://app.coffeebrk.ai" class="shortcut" title="CoffeeBrk">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#F97316,#D97706)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M2 21V17C2 14.79 3.79 13 6 13H14C16.21 13 18 14.79 18 17V21H2ZM18 9H20C21.1 9 22 9.9 22 11V13C22 14.1 21.1 15 20 15H18V9ZM4 9H16V5C16 3.9 15.1 3 14 3H6C4.9 3 4 3.9 4 5V9Z"/></svg>
+      </div>
+      <span>CoffeeBrk</span>
+    </a>
+    <a href="https://chat.openai.com" class="shortcut" title="ChatGPT">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#10A37F,#0D8C6D)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.052.5a6.044 6.044 0 00-5.79 4.26 6.028 6.028 0 00-4.035 2.921 6.044 6.044 0 00.745 7.09 5.985 5.985 0 00.516 4.91 6.046 6.046 0 006.51 2.9A6.065 6.065 0 0012.95 23.5a6.044 6.044 0 005.79-4.26 6.028 6.028 0 004.035-2.921 6.043 6.043 0 00-.493-6.498zM12.95 21.654a4.508 4.508 0 01-2.9-1.055l.144-.08 4.818-2.782a.783.783 0 00.395-.678v-6.79l2.037 1.176a.071.071 0 01.039.055v5.627a4.527 4.527 0 01-4.533 4.527zM3.584 17.656a4.494 4.494 0 01-.538-3.028l.144.085 4.818 2.782a.779.779 0 00.789 0l5.884-3.398v2.352a.07.07 0 01-.028.061l-4.87 2.813a4.527 4.527 0 01-6.199-1.667zM2.308 7.877a4.494 4.494 0 012.362-1.973V11.6a.78.78 0 00.395.678l5.884 3.398-2.037 1.176a.072.072 0 01-.067.006l-4.87-2.813A4.527 4.527 0 012.308 7.877zm16.56 3.858l-5.884-3.398 2.037-1.176a.072.072 0 01.067-.006l4.87 2.813a4.525 4.525 0 01-.7 8.164v-5.72a.78.78 0 00-.39-.677zm2.028-3.044l-.144-.085-4.818-2.782a.779.779 0 00-.789 0l-5.884 3.398V6.87a.07.07 0 01.028-.061l4.87-2.813a4.527 4.527 0 016.737 4.695zm-12.727 4.19L6.132 11.704a.071.071 0 01-.039-.055V6.022a4.527 4.527 0 017.433-3.472l-.144.08-4.818 2.782a.783.783 0 00-.395.678v6.79zm1.106-2.385l2.621-1.513 2.621 1.513v3.026l-2.621 1.513-2.621-1.513V10.496z"/></svg>
+      </div>
+      <span>ChatGPT</span>
+    </a>
+    <a href="https://linkedin.com" class="shortcut" title="LinkedIn">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#0077B5,#005885)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      </div>
+      <span>LinkedIn</span>
+    </a>
+    <a href="https://reddit.com" class="shortcut" title="Reddit">
+      <div class="shortcut-icon" style="background:linear-gradient(135deg,#FF4500,#CC3700)">
+        <svg viewBox="0 0 24 24" fill="white"><path d="M12 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 01-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 01.042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 014.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 01.14-.197.35.35 0 01.238-.042l2.906.617a1.214 1.214 0 011.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 00-.231.094.33.33 0 000 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 00.029-.463.33.33 0 00-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 00-.232-.095z"/></svg>
+      </div>
+      <span>Reddit</span>
+    </a>
+  </section>
+
+  <!-- ===== CATEGORY PILLS ===== -->
+  <section class="category-bar">
+    <button class="cat-pill active" data-category="">All</button>
+  </section>
+
+  <!-- ===== NEWS GRID ===== -->
+  <section class="news-section">
+    <div id="news-grid" class="news-grid"></div>
+    <div id="loader" class="loader" style="display:none">
+      <div class="spinner"></div>
+      <span>Loading more stories…</span>
+    </div>
+    <div id="empty-state" class="empty-state" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V9a2 2 0 012-2h2a2 2 0 012 2v9a2 2 0 01-2 2h-2z"/></svg>
+      <h3>No stories yet</h3>
+      <p>Check back later for the latest news from CoffeeBrk.</p>
+    </div>
+    <div id="error-state" class="error-state" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Couldn't load stories</h3>
+      <p>We'll try again shortly.</p>
+      <button id="retry-btn" class="retry-btn">Retry</button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>Powered by <a href="https://app.coffeebrk.ai" target="_blank">coffeebrk.ai</a></span>
+  </footer>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

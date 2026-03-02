@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "CoffeeBrk — New Tab",
+  "version": "1.0.0",
+  "description": "Your personalized new tab with Google search, quick shortcuts, and the latest news from CoffeeBrk.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": []
+}
