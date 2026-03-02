@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoffeeBrk Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="settings-container">
+        <!-- Header -->
+        <header class="settings-header">
+            <div class="header-brand">
+                <img src="icons/Coffee-Logo-AI-1-1-300x144.webp" alt="CoffeeBrk" class="header-logo">
+            </div>
+            <p class="header-subtitle">Customize your new tab experience</p>
+        </header>
+
+        <!-- Settings Navigation -->
+        <nav class="settings-nav">
+            <button class="nav-tab active" data-section="appearance">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                Appearance
+            </button>
+            <button class="nav-tab" data-section="shortcuts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Shortcuts
+            </button>
+            <button class="nav-tab" data-section="feed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 019 9m-9-4a4 4 0 014 4m-4 0h.01"/><circle cx="5" cy="19" r="1"/></svg>
+                News Feed
+            </button>
+            <button class="nav-tab" data-section="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Search
+            </button>
+            <button class="nav-tab" data-section="advanced">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                Advanced
+            </button>
+        </nav>
+
+        <!-- Settings Sections -->
+        <main class="settings-main">
+            <!-- Appearance Section -->
+            <section id="appearance" class="settings-section active">
+                <h2 class="section-title">Appearance</h2>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Theme</label>
+                            <p class="setting-desc">Choose your preferred color scheme</p>
+                        </div>
+                        <div class="setting-control">
+                            <div class="theme-selector">
+                                <button class="theme-btn" data-theme="dark" title="Dark">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                                </button>
+                                <button class="theme-btn" data-theme="light" title="Light">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                                </button>
+                                <button class="theme-btn" data-theme="system" title="System">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Accent Color</label>
+                            <p class="setting-desc">Customize the highlight color</p>
+                        </div>
+                        <div class="setting-control">
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="accentColor" class="color-picker" value="#E07A4B">
+                                <div class="color-presets">
+                                    <button class="color-preset" data-color="#E07A4B" title="Warm Orange"></button>
+                                    <button class="color-preset" data-color="#8B5A3C" title="Coffee Brown"></button>
+                                    <button class="color-preset" data-color="#F97316" title="Bright Orange"></button>
+                                    <button class="color-preset" data-color="#D4A574" title="Latte"></button>
+                                    <button class="color-preset" data-color="#10B981" title="Green"></button>
+                                    <button class="color-preset" data-color="#6366F1" title="Indigo"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Card Layout</label>
+                            <p class="setting-desc">Choose how articles are displayed</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="cardLayout" class="select-input">
+                                <option value="grid">Grid</option>
+                                <option value="list">List</option>
+                                <option value="compact">Compact</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Article Images</label>
+                            <p class="setting-desc">Display thumbnail images on news cards</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showImages" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Excerpts</label>
+                            <p class="setting-desc">Display article preview text</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showExcerpts" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Featured Card</label>
+                            <p class="setting-desc">Show the first article as a large featured card</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showFeaturedCard" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Shortcuts Section -->
+            <section id="shortcuts" class="settings-section">
+                <h2 class="section-title">Quick Access Shortcuts</h2>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Shortcuts</label>
+                            <p class="setting-desc">Display quick access icons below the search bar</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showShortcuts" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shortcuts-manager" id="shortcutsManager">
+                    <p class="shortcuts-hint">Drag to reorder. Click the toggle to enable/disable.</p>
+                    <div class="shortcuts-list" id="shortcutsList">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <button class="btn btn-secondary" id="addShortcut">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Custom Shortcut
+                    </button>
+                </div>
+
+                <!-- Add Shortcut Modal -->
+                <div class="modal" id="shortcutModal">
+                    <div class="modal-content">
+                        <h3>Add Custom Shortcut</h3>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="shortcutName" placeholder="My Website" class="text-input">
+                        </div>
+                        <div class="form-group">
+                            <label>URL</label>
+                            <input type="url" id="shortcutUrl" placeholder="https://example.com" class="text-input">
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" id="cancelShortcut">Cancel</button>
+                            <button class="btn btn-primary" id="saveShortcut">Add Shortcut</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Feed Section -->
+            <section id="feed" class="settings-section">
+                <h2 class="section-title">News Feed</h2>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Default Category</label>
+                            <p class="setting-desc">Start with a specific category selected</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="defaultCategory" class="select-input">
+                                <option value="">All</option>
+                                <!-- Populated by JavaScript -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Articles Per Page</label>
+                            <p class="setting-desc">Number of articles to load at once</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="articlesPerPage" class="select-input">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Categories</label>
+                            <p class="setting-desc">Display category filter pills</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showCategories" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Auto Refresh</label>
+                            <p class="setting-desc">Automatically refresh articles in the background</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="autoRefresh" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Refresh Interval</label>
+                            <p class="setting-desc">How often to check for new articles</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="refreshInterval" class="select-input">
+                                <option value="5">5 minutes</option>
+                                <option value="15" selected>15 minutes</option>
+                                <option value="30">30 minutes</option>
+                                <option value="60">1 hour</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Open Links In</label>
+                            <p class="setting-desc">Where to open article links</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="openLinksIn" class="select-input">
+                                <option value="newTab">New Tab</option>
+                                <option value="sameTab">Same Tab</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Search Section -->
+            <section id="search" class="settings-section">
+                <h2 class="section-title">Search</h2>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Search Bar</label>
+                            <p class="setting-desc">Display the search bar on the new tab page</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showSearchBar" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Search Engine</label>
+                            <p class="setting-desc">Choose your preferred search engine</p>
+                        </div>
+                        <div class="setting-control">
+                            <select id="searchEngine" class="select-input">
+                                <option value="google">Google</option>
+                                <option value="bing">Bing</option>
+                                <option value="duckduckgo">DuckDuckGo</option>
+                                <option value="brave">Brave Search</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Greeting</label>
+                            <p class="setting-desc">Display a time-based greeting message</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showGreeting" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Custom Greeting</label>
+                            <p class="setting-desc">Optional: Set a custom greeting message</p>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" id="customGreeting" placeholder="Hello, Developer!" class="text-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Date</label>
+                            <p class="setting-desc">Display current date</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showDate" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Show Time</label>
+                            <p class="setting-desc">Display current time</p>
+                        </div>
+                        <div class="setting-control">
+                            <label class="toggle">
+                                <input type="checkbox" id="showTime">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Advanced Section -->
+            <section id="advanced" class="settings-section">
+                <h2 class="section-title">Advanced</h2>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Clear Cache</label>
+                            <p class="setting-desc">Clear cached articles and reload fresh content</p>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn btn-secondary" id="clearCache">Clear Cache</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Reset Settings</label>
+                            <p class="setting-desc">Restore all settings to default values</p>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn btn-danger" id="resetSettings">Reset All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Export Settings</label>
+                            <p class="setting-desc">Download your settings as a JSON file</p>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn btn-secondary" id="exportSettings">Export</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <label class="setting-label">Import Settings</label>
+                            <p class="setting-desc">Restore settings from a backup file</p>
+                        </div>
+                        <div class="setting-control">
+                            <input type="file" id="importFile" accept=".json" style="display:none">
+                            <button class="btn btn-secondary" id="importSettings">Import</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-section">
+                    <img src="icons/Coffee-Logo-AI-1-1-300x144.webp" alt="CoffeeBrk" class="about-logo">
+                    <p class="about-version">Version 1.0.0</p>
+                    <p class="about-text">Made with love for developers and tech enthusiasts.</p>
+                    <div class="about-links">
+                        <a href="https://coffeebrk.ai" target="_blank">Website</a>
+                        <a href="https://app.coffeebrk.ai" target="_blank">Open App</a>
+                        <a href="https://twitter.com/coffeebrkAI" target="_blank">Twitter</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span class="toast-message">Settings saved</span>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>
