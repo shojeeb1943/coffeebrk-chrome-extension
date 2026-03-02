@@ -125,11 +125,14 @@
             loader.style.display = 'flex';
         }
 
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
         try {
             let url = `${API_BASE}/posts?page=${page}&per_page=${PER_PAGE}`;
             if (activeCategory) url += `&category=${encodeURIComponent(activeCategory)}`;
 
-            const res = await fetch(url);
+            const res = await fetch(url, { signal: controller.signal });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             const data = await res.json();
@@ -141,7 +144,7 @@
             if (data.items && data.items.length > 0) {
                 data.items.forEach((article, i) => {
                     const featured = !append && page === 1 && i === 0;
-                    grid.appendChild(createCard(article, append ? i : i, featured));
+                    grid.appendChild(createCard(article, i, featured));
                 });
                 emptyState.style.display = 'none';
             } else if (!append) {
@@ -149,13 +152,13 @@
             }
 
             errorState.style.display = 'none';
-        } catch (err) {
-            console.error('CoffeeBrk fetch error:', err);
+        } catch {
             if (!append) {
                 grid.innerHTML = '';
                 errorState.style.display = 'block';
             }
         } finally {
+            clearTimeout(timeout);
             isLoading = false;
             loader.style.display = 'none';
         }
@@ -163,11 +166,12 @@
 
     // ─── Load categories ─────────────────────────────────────────────────
     async function loadCategories() {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
         try {
-            const res = await fetch(`${API_BASE}/categories`);
+            const res = await fetch(`${API_BASE}/categories`, { signal: controller.signal });
             if (!res.ok) return;
             const cats = await res.json();
-
             cats.forEach(cat => {
                 const btn = document.createElement('button');
                 btn.className = 'cat-pill';
@@ -175,8 +179,10 @@
                 btn.textContent = cat.name;
                 catBar.appendChild(btn);
             });
-        } catch (e) {
-            console.warn('Could not load categories', e);
+        } catch {
+            // Categories are non-critical; silently skip on failure
+        } finally {
+            clearTimeout(timeout);
         }
     }
 
