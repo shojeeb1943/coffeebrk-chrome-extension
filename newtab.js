@@ -55,6 +55,18 @@
     const shortcutsSection = document.getElementById('shortcuts-section');
     const categorySection = document.getElementById('category-section');
     const searchForm = document.getElementById('search-form');
+    const storiesSection = document.getElementById('stories-section');
+    const storiesTrack = document.getElementById('stories-track');
+    const storiesPrevBtn = document.querySelector('.stories-nav-prev');
+    const storiesNextBtn = document.querySelector('.stories-nav-next');
+    const videoModal = document.getElementById('video-modal');
+    const videoModalContent = document.getElementById('video-modal-content');
+    const videoModalClose = document.querySelector('.video-modal__close');
+    const videoModalBackdrop = document.querySelector('.video-modal__backdrop');
+
+    // Stories carousel state
+    let storiesScrollPos = 0;
+    let storiesMaxScroll = 0;
 
     // ─── Initialize ──────────────────────────────────────────────────────
     async function init() {
@@ -62,10 +74,12 @@
         applySettings();
         setGreeting();
         updateTime();
+        loadStories();
         loadCategories();
         fetchNews(1);
         setupInfiniteScroll();
         setupEventListeners();
+        setupVideoModal();
         setInterval(updateTime, 60000);
     }
 
@@ -306,7 +320,9 @@
         card.addEventListener('click', () => {
             trackArticleRead();
             const target = settings.openLinksIn === 'sameTab' ? '_self' : '_blank';
-            window.open(article.permalink, target);
+            // Use source_url if available, otherwise fall back to permalink
+            const url = article.source_url || article.permalink;
+            window.open(url, target);
         });
 
         return card;
@@ -379,6 +395,209 @@
             isLoading = false;
             loader.style.display = 'none';
         }
+    }
+
+    // ─── Stories Carousel ────────────────────────────────────────────────
+    function showStoriesSkeletons(count = 6) {
+        if (!storiesTrack) return;
+        storiesTrack.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            const el = document.createElement('div');
+            el.className = 'story-skeleton';
+            storiesTrack.appendChild(el);
+        }
+    }
+
+    function createStoryCard(story) {
+        const card = document.createElement('div');
+        card.className = 'story-card';
+
+        // Background image or gradient
+        const bgStyle = story.image
+            ? `background-image: url('${escapeHtml(story.image)}')`
+            : `background: ${story.gradient || '#F5F5FF'}`;
+
+        // Overlay gradient using story gradient color
+        const gradientColor = story.gradient || '#000';
+        const intensity = story.gradient_intensity || 50;
+        const overlayOpacity = intensity / 100;
+
+        card.innerHTML = `
+            <div class="story-card__bg" style="${bgStyle}"></div>
+            <div class="story-card__overlay" style="background: linear-gradient(to top, ${hexToRgba(gradientColor, overlayOpacity * 0.8)} 0%, ${hexToRgba(gradientColor, overlayOpacity * 0.3)} 50%, transparent 100%)"></div>
+            <div class="story-card__content">
+                <span class="story-card__title" style="color: ${story.text_color || '#fff'}">${escapeHtml(story.title)}</span>
+            </div>
+            ${story.video_url ? `
+                <div class="story-card__play">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                </div>
+            ` : ''}
+        `;
+
+        card.addEventListener('click', () => {
+            if (story.video_url) {
+                openVideoModal(story.video_url);
+            }
+        });
+
+        return card;
+    }
+
+    // ─── Video Modal ────────────────────────────────────────────────────
+    function getVideoEmbedUrl(url) {
+        if (!url) return null;
+
+        // YouTube Shorts
+        const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+        if (shortsMatch) {
+            return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=1&loop=1&playlist=${shortsMatch[1]}`;
+        }
+
+        // YouTube standard
+        const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+        if (ytMatch) {
+            return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+        }
+
+        // Vimeo
+        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+        if (vimeoMatch) {
+            return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+        }
+
+        // Direct video URL - can't embed, open in new tab
+        return null;
+    }
+
+    function isVerticalVideo(url) {
+        // YouTube Shorts are vertical
+        return url && url.includes('/shorts/');
+    }
+
+    function openVideoModal(url) {
+        const embedUrl = getVideoEmbedUrl(url);
+
+        if (!embedUrl) {
+            // Can't embed, open in new tab
+            window.open(url, '_blank');
+            return;
+        }
+
+        const isVertical = isVerticalVideo(url);
+
+        // Set aspect ratio based on video type
+        if (isVertical) {
+            videoModalContent.classList.remove('landscape');
+            videoModal.querySelector('.video-modal__container').classList.remove('landscape');
+        } else {
+            videoModalContent.classList.add('landscape');
+            videoModal.querySelector('.video-modal__container').classList.add('landscape');
+        }
+
+        videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        videoModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeVideoModal() {
+        videoModal.classList.remove('active');
+        document.body.style.overflow = '';
+        // Delay clearing to allow animation
+        setTimeout(() => {
+            videoModalContent.innerHTML = '';
+        }, 300);
+    }
+
+    // Setup video modal event listeners
+    function setupVideoModal() {
+        if (!videoModal) return;
+
+        videoModalClose?.addEventListener('click', closeVideoModal);
+        videoModalBackdrop?.addEventListener('click', closeVideoModal);
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
+                closeVideoModal();
+            }
+        });
+    }
+
+    async function loadStories() {
+        if (!storiesSection || !storiesTrack) return;
+
+        showStoriesSkeletons(6);
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+
+            const res = await fetch(`${API_BASE}/stories?limit=10`, {
+                signal: controller.signal,
+                headers: { 'Accept': 'application/json' }
+            });
+
+            clearTimeout(timeout);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+
+            if (data.items?.length > 0) {
+                storiesTrack.innerHTML = '';
+                data.items.forEach(story => {
+                    storiesTrack.appendChild(createStoryCard(story));
+                });
+                storiesSection.classList.remove('stories-hidden');
+                setupStoriesNavigation();
+            } else {
+                storiesSection.classList.add('stories-hidden');
+            }
+        } catch (e) {
+            console.error('CoffeeBrk: Failed to load stories', e);
+            // Hide section on error - will show again when API is available
+            storiesTrack.innerHTML = '';
+            storiesSection.classList.add('stories-hidden');
+        }
+    }
+
+    function setupStoriesNavigation() {
+        if (!storiesTrack || !storiesPrevBtn || !storiesNextBtn) return;
+
+        const cardWidth = 160 + 16; // card width + gap
+        const visibleWidth = storiesTrack.parentElement.offsetWidth;
+        const totalWidth = storiesTrack.scrollWidth;
+        storiesMaxScroll = Math.max(0, totalWidth - visibleWidth);
+
+        function updateNavButtons() {
+            storiesPrevBtn.disabled = storiesScrollPos <= 0;
+            storiesNextBtn.disabled = storiesScrollPos >= storiesMaxScroll;
+        }
+
+        function scrollStories(direction) {
+            const scrollAmount = cardWidth * 3; // Scroll 3 cards at a time
+            storiesScrollPos = Math.max(0, Math.min(storiesMaxScroll,
+                storiesScrollPos + (direction * scrollAmount)));
+            storiesTrack.style.transform = `translateX(-${storiesScrollPos}px)`;
+            updateNavButtons();
+        }
+
+        storiesPrevBtn.addEventListener('click', () => scrollStories(-1));
+        storiesNextBtn.addEventListener('click', () => scrollStories(1));
+
+        updateNavButtons();
+
+        // Recalculate on resize
+        window.addEventListener('resize', () => {
+            const newVisibleWidth = storiesTrack.parentElement.offsetWidth;
+            const newTotalWidth = storiesTrack.scrollWidth;
+            storiesMaxScroll = Math.max(0, newTotalWidth - newVisibleWidth);
+            storiesScrollPos = Math.min(storiesScrollPos, storiesMaxScroll);
+            storiesTrack.style.transform = `translateX(-${storiesScrollPos}px)`;
+            updateNavButtons();
+        });
     }
 
     // ─── Categories ──────────────────────────────────────────────────────

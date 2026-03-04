@@ -44,7 +44,7 @@
   ],
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://app.coffeebrk.ai https://*.coffeebrk.ai;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://app.coffeebrk.ai https://*.coffeebrk.ai; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com;"
   },
 
   "web_accessible_resources": [

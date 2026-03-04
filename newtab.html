@@ -86,6 +86,30 @@
         </a>
     </section>
 
+    <!-- ===== STORIES CAROUSEL ===== -->
+    <section class="stories-section" id="stories-section">
+        <div class="stories-header">
+            <h2 class="stories-title">Breaking AI Shots!</h2>
+            <div class="stories-nav">
+                <button class="stories-nav-btn stories-nav-prev" aria-label="Previous stories">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
+                <button class="stories-nav-btn stories-nav-next" aria-label="Next stories">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="stories-track-wrapper">
+            <div class="stories-track" id="stories-track">
+                <!-- Stories will be loaded dynamically -->
+            </div>
+        </div>
+    </section>
+
     <!-- ===== CATEGORY PILLS ===== -->
     <section class="category-bar" id="category-section">
         <button class="cat-pill active" data-category="">All</button>
@@ -120,6 +144,22 @@
     <footer class="footer">
         <span>Powered by <a href="https://coffeebrk.ai" target="_blank">coffeebrk.ai</a></span>
     </footer>
+
+    <!-- ===== VIDEO MODAL ===== -->
+    <div id="video-modal" class="video-modal">
+        <div class="video-modal__backdrop"></div>
+        <div class="video-modal__container">
+            <button class="video-modal__close" aria-label="Close video">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <div class="video-modal__content" id="video-modal-content">
+                <!-- Video iframe will be inserted here -->
+            </div>
+        </div>
+    </div>
 
     <script src="newtab.js"></script>
 </body>
