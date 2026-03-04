@@ -439,50 +439,24 @@
     }
 
     // ─── Video Modal ────────────────────────────────────────────────────
-    function getVideoEmbedUrl(url) {
-        if (!url) return null;
-
-        // YouTube Shorts - convert to regular embed
-        const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
-        if (shortsMatch) {
-            return `https://www.youtube.com/embed/${shortsMatch[1]}?rel=0&modestbranding=1`;
-        }
-
-        // YouTube standard
-        const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-        if (ytMatch) {
-            return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
-        }
-
-        // Vimeo
-        const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-        if (vimeoMatch) {
-            return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-        }
-
-        // Direct video URL - can't embed, open in new tab
-        return null;
-    }
-
     function isVerticalVideo(url) {
-        // YouTube Shorts are vertical
         return url && url.includes('/shorts/');
     }
 
     function openVideoModal(url) {
         const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
+        const container = videoModal.querySelector('.video-modal__container');
 
-        // Set aspect ratio based on video type
         if (isVertical) {
             videoModalContent.classList.remove('landscape');
-            videoModal.querySelector('.video-modal__container').classList.remove('landscape');
+            container.classList.remove('landscape');
         } else {
             videoModalContent.classList.add('landscape');
-            videoModal.querySelector('.video-modal__container').classList.add('landscape');
+            container.classList.add('landscape');
         }
 
-        videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
         videoModal.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
