@@ -295,7 +295,7 @@
                 <span class="news-card__link-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.33">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <path d="M9 9l6 6M15 9v6h-6"/>
+                        <path d="M9 15l6-6M15 15v-6h-6"/>
                     </svg>
                 </span>
             </div>
@@ -431,8 +431,7 @@
 
         card.addEventListener('click', () => {
             if (story.video_url) {
-                // Open video in new tab - embedding doesn't work well in extension context
-                window.open(story.video_url, '_blank');
+                openVideoModal(story.video_url);
             }
         });
 
@@ -443,22 +442,22 @@
     function getVideoEmbedUrl(url) {
         if (!url) return null;
 
-        // YouTube Shorts
+        // YouTube Shorts - convert to regular embed
         const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
         if (shortsMatch) {
-            return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=1&loop=1&playlist=${shortsMatch[1]}`;
+            return `https://www.youtube.com/embed/${shortsMatch[1]}?rel=0&modestbranding=1`;
         }
 
         // YouTube standard
         const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
         if (ytMatch) {
-            return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+            return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
         }
 
         // Vimeo
         const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
         if (vimeoMatch) {
-            return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+            return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
         }
 
         // Direct video URL - can't embed, open in new tab
@@ -471,14 +470,7 @@
     }
 
     function openVideoModal(url) {
-        const embedUrl = getVideoEmbedUrl(url);
-
-        if (!embedUrl) {
-            // Can't embed, open in new tab
-            window.open(url, '_blank');
-            return;
-        }
-
+        const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
 
         // Set aspect ratio based on video type

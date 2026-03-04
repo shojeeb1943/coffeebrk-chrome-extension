@@ -603,7 +603,7 @@ a {
     line-height: 28px;
     color: #323232;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -618,7 +618,7 @@ a {
     line-height: 21px;
     color: #818181;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
