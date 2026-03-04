@@ -287,24 +287,16 @@
         card.innerHTML = `
             ${imageHtml}
             <div class="news-card__body">
-                ${catName ? `<span class="news-card__category">${escapeHtml(catName)}</span>` : ''}
                 <h3 class="news-card__title">${escapeHtml(article.title)}</h3>
                 ${excerptHtml}
             </div>
             <div class="news-card__footer">
-                <div class="news-card__meta">
-                    <span class="news-card__source">
-                        <span class="news-card__source-icon">${getSourceInitial(sourceName)}</span>
-                        ${escapeHtml(sourceName)}
-                    </span>
-                    <span class="news-card__date">${timeAgo(article.date)}</span>
-                </div>
-                <span class="news-card__reading-time">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
+                <span class="news-card__source">${escapeHtml(sourceName)}</span>
+                <span class="news-card__link-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.33">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9l6 6M15 9v6h-6"/>
                     </svg>
-                    ${readTime}
                 </span>
             </div>
         `;
@@ -439,7 +431,8 @@
 
         card.addEventListener('click', () => {
             if (story.video_url) {
-                openVideoModal(story.video_url);
+                // Open video in new tab - embedding doesn't work well in extension context
+                window.open(story.video_url, '_blank');
             }
         });
 
