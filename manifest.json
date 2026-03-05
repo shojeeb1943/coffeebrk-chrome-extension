@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CoffeeBrk — New Tab",
   "short_name": "CoffeeBrk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Your personalized new tab with Google search, quick shortcuts, customizable widgets, and the latest tech news curated by AI. Stay productive and informed.",
   "author": "CoffeeBrk.ai",
   "homepage_url": "https://coffeebrk.ai",
@@ -36,7 +36,8 @@
 
   "permissions": [
     "storage",
-    "alarms"
+    "alarms",
+    "tabs"
   ],
 
   "host_permissions": [
@@ -50,7 +51,7 @@
   "web_accessible_resources": [
     {
       "resources": ["icons/*", "*.webp", "*.png"],
-      "matches": ["<all_urls>"]
+      "matches": ["https://app.coffeebrk.ai/*"]
     }
   ],
 

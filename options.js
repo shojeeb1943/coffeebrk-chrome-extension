@@ -1,12 +1,32 @@
 /**
- * CoffeeBrk Options Page JavaScript
- * Handles all settings interactions and persistence.
+ * @file options.js
+ * @description Settings/Options page controller for the CoffeeBrk Chrome Extension.
+ *
+ * Responsibilities:
+ *  - Load persisted settings from the background service worker on page open.
+ *  - Render all setting controls (toggles, selects, colour pickers, shortcuts list).
+ *  - Persist changes immediately on user interaction via chrome.runtime messages.
+ *  - Provide shortcut management: add, toggle, re-order (drag-and-drop), delete.
+ *  - Support settings export to JSON and import from JSON.
+ *  - Populate the default-category dropdown from the live API.
+ *
+ * @version 1.1.0
+ * @author  CoffeeBrk.ai <hello@coffeebrk.ai>
+ * @license Proprietary — © 2024 CoffeeBrk.ai. All rights reserved.
  */
 
 (() => {
     'use strict';
 
-    // Default settings (must match background.js)
+    // ─── Default Settings ─────────────────────────────────────────────────────
+    /**
+     * Canonical defaults for every user-configurable setting.
+     *
+     * IMPORTANT: Keep this object in sync with the DEFAULT_SETTINGS defined in
+     * background.js and newtab.js — they all share the same shape.
+     *
+     * @type {Object}
+     */
     const DEFAULT_SETTINGS = {
         theme: 'dark',
         accentColor: '#E07A4B',
@@ -44,14 +64,19 @@
         trackUsage: false
     };
 
+    /** Live mutable copy of the settings, updated on every user interaction. @type {Object} */
     let currentSettings = { ...DEFAULT_SETTINGS };
 
-    // DOM Elements
-    const toast = document.getElementById('toast');
+    // ─── DOM References ──────────────────────────────────────────────────────
     const navTabs = document.querySelectorAll('.nav-tab');
     const sections = document.querySelectorAll('.settings-section');
 
-    // Initialize
+    // ─── Initialisation ──────────────────────────────────────────────────────
+
+    /**
+     * Entry point: loads persisted settings then wires up all UI controls.
+     * @returns {Promise<void>}
+     */
     async function init() {
         await loadSettings();
         setupNavigation();
@@ -63,7 +88,14 @@
         loadCategories();
     }
 
-    // Load settings from storage
+    // ─── Settings Load / Save ────────────────────────────────────────────────
+
+    /**
+     * Requests the current settings from the background service worker and
+     * falls back to DEFAULT_SETTINGS if the message fails.
+     *
+     * @returns {Promise<void>}
+     */
     async function loadSettings() {
         try {
             const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
@@ -71,22 +103,25 @@
                 currentSettings = { ...DEFAULT_SETTINGS, ...response.settings };
             }
         } catch (e) {
-            console.log('Using default settings');
+            // Background worker unavailable — use local defaults.
         }
         applySettingsToUI();
     }
 
-    // Apply settings to UI controls
+    /**
+     * Mirrors the current in-memory settings object into every UI control.
+     * Called after load and after a full settings reset.
+     */
     function applySettingsToUI() {
-        // Theme
+        // Theme buttons
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === currentSettings.theme);
         });
 
-        // Accent color
+        // Accent colour picker
         document.getElementById('accentColor').value = currentSettings.accentColor;
 
-        // Toggles
+        // Toggle controls
         setToggle('showImages', currentSettings.showImages);
         setToggle('showExcerpts', currentSettings.showExcerpts);
         setToggle('showFeaturedCard', currentSettings.showFeaturedCard);
@@ -98,7 +133,7 @@
         setToggle('showDate', currentSettings.showDate);
         setToggle('showTime', currentSettings.showTime);
 
-        // Selects
+        // Select / dropdown controls
         setSelect('cardLayout', currentSettings.cardLayout);
         setSelect('articlesPerPage', currentSettings.articlesPerPage);
         setSelect('refreshInterval', currentSettings.refreshInterval);
@@ -109,21 +144,38 @@
         // Text inputs
         document.getElementById('customGreeting').value = currentSettings.customGreeting || '';
 
-        // Shortcuts
+        // Shortcuts list
         renderShortcuts();
     }
 
+    /**
+     * Sets a checkbox toggle element to the given value.
+     *
+     * @param {string}  id     Element ID.
+     * @param {boolean} value  Checked state to apply.
+     */
     function setToggle(id, value) {
         const el = document.getElementById(id);
         if (el) el.checked = value;
     }
 
+    /**
+     * Sets a <select> element to the given value.
+     *
+     * @param {string} id     Element ID.
+     * @param {*}      value  Option value to select.
+     */
     function setSelect(id, value) {
         const el = document.getElementById(id);
         if (el) el.value = value;
     }
 
-    // Save settings
+    /**
+     * Sends the current in-memory settings to the background service worker
+     * for persistence in chrome.storage.sync.
+     *
+     * @returns {Promise<void>}
+     */
     async function saveSettings() {
         try {
             await chrome.runtime.sendMessage({
@@ -136,6 +188,14 @@
         }
     }
 
+    // ─── Toast Notification ──────────────────────────────────────────────────
+
+    /**
+     * Briefly displays a toast notification at the bottom of the options page.
+     *
+     * @param {string}  message         Text to display.
+     * @param {boolean} [isError=false] When true, applies error styling.
+     */
     function showToast(message, isError = false) {
         const toastEl = document.getElementById('toast');
         const toastIcon = toastEl.querySelector('.toast-icon');
@@ -149,7 +209,12 @@
         setTimeout(() => toastEl.classList.remove('show'), 3000);
     }
 
-    // Navigation
+    // ─── Navigation ──────────────────────────────────────────────────────────
+
+    /**
+     * Wires the sidebar navigation tabs to show/hide the corresponding
+     * settings section panels.
+     */
     function setupNavigation() {
         navTabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -165,9 +230,14 @@
         });
     }
 
-    // Appearance Controls
+    // ─── Appearance Controls ─────────────────────────────────────────────────
+
+    /**
+     * Attaches event listeners for all Appearance section controls:
+     * theme selector buttons, accent colour picker, colour presets,
+     * card layout select, and image/excerpt/featured toggles.
+     */
     function setupAppearanceControls() {
-        // Theme buttons
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
@@ -177,13 +247,11 @@
             });
         });
 
-        // Accent color
         document.getElementById('accentColor').addEventListener('change', (e) => {
             currentSettings.accentColor = e.target.value;
             saveSettings();
         });
 
-        // Color presets
         document.querySelectorAll('.color-preset').forEach(btn => {
             btn.addEventListener('click', () => {
                 const color = btn.dataset.color;
@@ -193,18 +261,22 @@
             });
         });
 
-        // Card layout
         document.getElementById('cardLayout').addEventListener('change', (e) => {
             currentSettings.cardLayout = e.target.value;
             saveSettings();
         });
 
-        // Toggles
         setupToggle('showImages');
         setupToggle('showExcerpts');
         setupToggle('showFeaturedCard');
     }
 
+    /**
+     * Registers a change listener on a checkbox toggle that automatically
+     * updates `currentSettings` and persists the change.
+     *
+     * @param {string} id  ID of the checkbox element to observe.
+     */
     function setupToggle(id) {
         const el = document.getElementById(id);
         if (el) {
@@ -215,23 +287,26 @@
         }
     }
 
-    // Shortcuts Manager
+    // ─── Shortcuts Manager ───────────────────────────────────────────────────
+
+    /**
+     * Initialises the Shortcuts section: registers the Add / Cancel / Save
+     * modal controls, backdrop-click dismissal, and delegates toggle/delete
+     * actions to the rendered shortcut list rows.
+     */
     function setupShortcutsManager() {
         setupToggle('showShortcuts');
         renderShortcuts();
 
-        // Add shortcut button
         document.getElementById('addShortcut').addEventListener('click', () => {
             document.getElementById('shortcutModal').classList.add('active');
         });
 
-        // Cancel shortcut
         document.getElementById('cancelShortcut').addEventListener('click', () => {
             document.getElementById('shortcutModal').classList.remove('active');
             clearShortcutForm();
         });
 
-        // Save shortcut
         document.getElementById('saveShortcut').addEventListener('click', () => {
             const name = document.getElementById('shortcutName').value.trim();
             const url = document.getElementById('shortcutUrl').value.trim();
@@ -240,7 +315,6 @@
                 showToast('Please fill in all fields', true);
                 return;
             }
-
             if (!isValidUrl(url)) {
                 showToast('Please enter a valid URL', true);
                 return;
@@ -259,7 +333,7 @@
             clearShortcutForm();
         });
 
-        // Close modal on background click
+        // Close modal when clicking outside the dialog panel
         document.getElementById('shortcutModal').addEventListener('click', (e) => {
             if (e.target.id === 'shortcutModal') {
                 document.getElementById('shortcutModal').classList.remove('active');
@@ -268,11 +342,19 @@
         });
     }
 
+    /** Resets the Add Shortcut form fields to empty. */
     function clearShortcutForm() {
         document.getElementById('shortcutName').value = '';
         document.getElementById('shortcutUrl').value = '';
     }
 
+    /**
+     * Validates that a string represents a reasonably well-formed URL.
+     * Prepends `https://` if no scheme is specified before testing.
+     *
+     * @param  {string}  string  URL string to validate.
+     * @returns {boolean}         True when the URL is structurally valid.
+     */
     function isValidUrl(string) {
         try {
             const url = string.startsWith('http') ? string : 'https://' + string;
@@ -283,6 +365,11 @@
         }
     }
 
+    /**
+     * (Re-)renders the full list of shortcuts into `#shortcutsList`.
+     * Each row includes a drag handle, favicon placeholder, info, enable toggle,
+     * and delete button. Drag-and-drop reordering is also attached here.
+     */
     function renderShortcuts() {
         const list = document.getElementById('shortcutsList');
         list.innerHTML = '';
@@ -325,22 +412,17 @@
                 </div>
             `;
 
-            // Toggle handler
-            const toggle = item.querySelector('input[type="checkbox"]');
-            toggle.addEventListener('change', (e) => {
+            item.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
                 currentSettings.shortcuts[index].enabled = e.target.checked;
                 saveSettings();
             });
 
-            // Delete handler
-            const deleteBtn = item.querySelector('.shortcut-delete');
-            deleteBtn.addEventListener('click', () => {
+            item.querySelector('.shortcut-delete').addEventListener('click', () => {
                 currentSettings.shortcuts.splice(index, 1);
                 saveSettings();
                 renderShortcuts();
             });
 
-            // Drag handlers
             item.addEventListener('dragstart', handleDragStart);
             item.addEventListener('dragover', handleDragOver);
             item.addEventListener('drop', handleDrop);
@@ -350,17 +432,26 @@
         });
     }
 
+    // ─── Drag-and-Drop Handlers ──────────────────────────────────────────────
+
+    /** @type {number|null} Index of the shortcut row currently being dragged. */
     let draggedIndex = null;
 
+    /** @param {DragEvent} e */
     function handleDragStart(e) {
         draggedIndex = parseInt(e.target.dataset.index);
         e.target.classList.add('dragging');
     }
 
+    /** @param {DragEvent} e */
     function handleDragOver(e) {
         e.preventDefault();
     }
 
+    /**
+     * Drops the dragged shortcut at the target position and re-renders the list.
+     * @param {DragEvent} e
+     */
     function handleDrop(e) {
         e.preventDefault();
         const dropIndex = parseInt(e.target.closest('.shortcut-item')?.dataset.index);
@@ -372,18 +463,33 @@
         }
     }
 
+    /** @param {DragEvent} e */
     function handleDragEnd(e) {
         e.target.classList.remove('dragging');
         draggedIndex = null;
     }
 
+    // ─── XSS Helper ──────────────────────────────────────────────────────────
+
+    /**
+     * Safely HTML-encodes a string via the browser's own text-node serialiser.
+     *
+     * @param  {string} str  Raw input.
+     * @returns {string}      HTML-safe string.
+     */
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str || '';
         return div.innerHTML;
     }
 
-    // Feed Controls
+    // ─── Feed Controls ───────────────────────────────────────────────────────
+
+    /**
+     * Attaches event listeners for all Feed section controls:
+     * categories toggle, auto-refresh toggle, default category, articles-per-page,
+     * refresh interval, and open-links-in select.
+     */
     function setupFeedControls() {
         setupToggle('showCategories');
         setupToggle('autoRefresh');
@@ -409,7 +515,13 @@
         });
     }
 
-    // Search Controls
+    // ─── Search & Greeting Controls ──────────────────────────────────────────
+
+    /**
+     * Attaches event listeners for all Search section controls:
+     * search bar, greeting, date/time visibility, search engine select,
+     * and custom greeting text.
+     */
     function setupSearchControls() {
         setupToggle('showSearchBar');
         setupToggle('showGreeting');
@@ -427,9 +539,14 @@
         });
     }
 
-    // Advanced Controls
+    // ─── Advanced Controls ───────────────────────────────────────────────────
+
+    /**
+     * Attaches event listeners for all Advanced section controls:
+     * clear cache, reset to defaults, export settings to JSON, and
+     * import settings from a JSON file.
+     */
     function setupAdvancedControls() {
-        // Clear cache
         document.getElementById('clearCache').addEventListener('click', async () => {
             try {
                 await chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' });
@@ -439,7 +556,6 @@
             }
         });
 
-        // Reset settings
         document.getElementById('resetSettings').addEventListener('click', async () => {
             if (confirm('Are you sure you want to reset all settings to defaults?')) {
                 try {
@@ -455,7 +571,7 @@
             }
         });
 
-        // Export settings
+        // Export settings as a downloadable JSON file
         document.getElementById('exportSettings').addEventListener('click', () => {
             const data = JSON.stringify(currentSettings, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
@@ -468,7 +584,7 @@
             showToast('Settings exported');
         });
 
-        // Import settings
+        // Import settings from a user-selected JSON file
         const importBtn = document.getElementById('importSettings');
         const importFile = document.getElementById('importFile');
 
@@ -491,11 +607,19 @@
                 }
             };
             reader.readAsText(file);
+            // Clear the input so the same file can be re-selected if needed
             importFile.value = '';
         });
     }
 
-    // Load categories for the dropdown
+    // ─── Category Dropdown Population ────────────────────────────────────────
+
+    /**
+     * Fetches the list of available categories from the background worker cache
+     * and appends them as <option> elements to the Default Category dropdown.
+     *
+     * @returns {Promise<void>}
+     */
     async function loadCategories() {
         try {
             const response = await chrome.runtime.sendMessage({ type: 'GET_CATEGORIES' });
@@ -510,10 +634,10 @@
                 select.value = currentSettings.defaultCategory;
             }
         } catch (e) {
-            console.log('Could not load categories');
+            // Categories are cosmetic — silently skip if unavailable.
         }
     }
 
-    // Start
+    // ─── Start ───────────────────────────────────────────────────────────────
     init();
 })();

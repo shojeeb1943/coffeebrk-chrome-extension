@@ -1,6 +1,19 @@
 /**
- * CoffeeBrk New Tab — Modern News Reader
- * Clean, fast, and user-friendly.
+ * @file newtab.js
+ * @description New Tab page controller for the CoffeeBrk Chrome Extension.
+ *
+ * Responsibilities:
+ *  - Load and apply user settings from the background service worker.
+ *  - Render the greeting, date/time, search bar, and quick-access shortcuts.
+ *  - Fetch and display paginated news articles from the CoffeeBrk API.
+ *  - Render the Stories carousel with optional video modal playback.
+ *  - Dynamically populate the category filter bar.
+ *  - Support infinite scroll for seamless article browsing.
+ *  - React to settings changes in real time via chrome.storage.onChanged.
+ *
+ * @version 1.1.0
+ * @author  CoffeeBrk.ai <hello@coffeebrk.ai>
+ * @license Proprietary — © 2024 CoffeeBrk.ai. All rights reserved.
  */
 
 (() => {
@@ -16,7 +29,7 @@
         brave: 'https://search.brave.com/search'
     };
 
-    // ─── State ───────────────────────────────────────────────────────────
+    // ─── Module State ─────────────────────────────────────────────────────
     let currentPage = 1;
     let totalPages = 1;
     let isLoading = false;
@@ -83,7 +96,14 @@
         setInterval(updateTime, 60000);
     }
 
-    // ─── Settings ────────────────────────────────────────────────────────
+    // ─── Settings ─────────────────────────────────────────────────────────────
+    /**
+     * Loads settings from the background service worker.
+     * Falls back to DEFAULT_SETTINGS gracefully when not running inside the
+     * extension context (e.g., during local development).
+     *
+     * @returns {Promise<void>}
+     */
     async function loadSettings() {
         try {
             if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
@@ -94,11 +114,16 @@
                 }
             }
         } catch (e) {
-            console.log('CoffeeBrk: Using default settings');
+            // Unable to reach background worker — use compiled-in defaults.
         }
         settings = { ...DEFAULT_SETTINGS };
     }
 
+    /**
+     * Applies the current `settings` object to the DOM:
+     * theme attribute, CSS custom properties, section visibility,
+     * search-form action, and card-grid layout classes.
+     */
     function applySettings() {
         // Theme
         if (settings.theme === 'light') {
@@ -137,6 +162,13 @@
         if (settings.defaultCategory) activeCategory = settings.defaultCategory;
     }
 
+    /**
+     * Converts a 6-digit hex colour string to an rgba() value.
+     *
+     * @param  {string} hex    Hex colour, e.g. '#E07A4B'.
+     * @param  {number} alpha  Opacity in the range [0, 1].
+     * @returns {string}        CSS rgba() string.
+     */
     function hexToRgba(hex, alpha) {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
@@ -197,6 +229,12 @@
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────
+    /**
+     * Returns a human-readable relative time string for the given ISO date.
+     *
+     * @param  {string} dateStr  ISO 8601 date string.
+     * @returns {string}          E.g. 'just now', '5m ago', '2h ago', 'Mar 3'.
+     */
     function timeAgo(dateStr) {
         const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
         if (diff < 60) return 'just now';
@@ -206,6 +244,12 @@
         return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
+    /**
+     * Estimates reading time for a piece of text at 200 words per minute.
+     *
+     * @param  {string} text  Plain-text excerpt or body content.
+     * @returns {string}       E.g. '3 min'.
+     */
     function estimateReadTime(text) {
         if (!text) return '1 min';
         const words = text.split(/\s+/).length;
@@ -213,11 +257,25 @@
         return mins + ' min';
     }
 
+    /**
+     * Returns the uppercase first character of a source name, used as a
+     * fallback avatar for articles without a thumbnail.
+     *
+     * @param  {string} [source]  Source publication name.
+     * @returns {string}           Single uppercase letter, default 'C'.
+     */
     function getSourceInitial(source) {
         if (!source) return 'C';
         return source.charAt(0).toUpperCase();
     }
 
+    /**
+     * Safely HTML-encodes a string by delegating to the browser's own text-node
+     * serialiser — avoids regex-based escaping edge-cases.
+     *
+     * @param  {string} str  Raw string that may contain HTML characters.
+     * @returns {string}      HTML-safe string.
+     */
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str || '';
@@ -243,6 +301,14 @@
     }
 
     // ─── Card Rendering ──────────────────────────────────────────────────
+    /**
+     * Creates and returns a DOM <article> element for a single news article.
+     *
+     * @param  {Object}  article            Article data from the API.
+     * @param  {number}  index              Position in the current page (used for CSS stagger delay).
+     * @param  {boolean} [featured=false]   When true, applies the featured-card style to the first item.
+     * @returns {HTMLElement}               The constructed article card element.
+     */
     function createCard(article, index, featured = false) {
         const card = document.createElement('article');
         const isFeatured = featured && settings.showFeaturedCard;
@@ -304,7 +370,7 @@
         // Handle image load errors (CSP-compliant)
         const img = card.querySelector('img[data-fallback="true"]');
         if (img) {
-            img.addEventListener('error', function() {
+            img.addEventListener('error', function () {
                 this.style.display = 'none';
             });
         }
@@ -320,6 +386,11 @@
         return card;
     }
 
+    /**
+     * Increments the daily articles-read counter stored in localStorage.
+     * Resets to zero when the stored date does not match today.
+     * Used only for the popup stats display — no data leaves the device.
+     */
     function trackArticleRead() {
         try {
             const today = new Date().toDateString();
@@ -328,10 +399,18 @@
             if (data.date !== today) data = { date: today, count: 0 };
             data.count++;
             localStorage.setItem('coffeebrk_articles_read', JSON.stringify(data));
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // ─── Fetch News ──────────────────────────────────────────────────────
+    /**
+     * Fetches a page of articles from the CoffeeBrk API and renders them.
+     *
+     * @param  {number}  [page=1]       1-based page number to fetch.
+     * @param  {boolean} [append=false] When true, appends cards to the existing
+     *                                  grid instead of replacing it (infinite scroll).
+     * @returns {Promise<void>}
+     */
     async function fetchNews(page = 1, append = false) {
         if (isLoading) return;
         isLoading = true;
@@ -377,7 +456,7 @@
 
             errorState.style.display = 'none';
         } catch (err) {
-            console.error('CoffeeBrk: Fetch failed', err);
+            console.error('[CoffeeBrk] Article fetch failed:', err);
             if (!append) {
                 grid.innerHTML = '';
                 errorState.style.display = 'block';
@@ -400,6 +479,18 @@
         }
     }
 
+    /**
+     * Creates and returns a DOM element representing a single Story card.
+     *
+     * @param  {Object}   story               Story data from the API.
+     * @param  {string}   story.title          Displayed title.
+     * @param  {string}   [story.image]        Background image URL.
+     * @param  {string}   [story.gradient]     Fallback gradient / overlay colour.
+     * @param  {number}   [story.gradient_intensity] Overlay opacity hint (0–100).
+     * @param  {string}   [story.text_color]   Title text colour.
+     * @param  {string}   [story.video_url]    Optional video URL; shows play button.
+     * @returns {HTMLElement}  The constructed story card element.
+     */
     function createStoryCard(story) {
         const card = document.createElement('div');
         card.className = 'story-card';
@@ -438,11 +529,23 @@
         return card;
     }
 
-    // ─── Video Modal ────────────────────────────────────────────────────
+    // ─── Video Modal ──────────────────────────────────────────────────────────
+    /**
+     * Returns true if the given video URL represents a vertical / Shorts format.
+     *
+     * @param  {string} url  Video URL to inspect.
+     * @returns {boolean}
+     */
     function isVerticalVideo(url) {
         return url && url.includes('/shorts/');
     }
 
+    /**
+     * Opens the video modal and loads the given URL via the API proxy iframe.
+     * Adjusts the modal container class for vertical (Shorts) vs landscape video.
+     *
+     * @param  {string} url  Original video URL to embed.
+     */
     function openVideoModal(url) {
         const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
@@ -461,6 +564,9 @@
         document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Closes the video modal and clears the iframe src after the CSS transition.
+     */
     function closeVideoModal() {
         videoModal.classList.remove('active');
         document.body.style.overflow = '';
@@ -470,7 +576,10 @@
         }, 300);
     }
 
-    // Setup video modal event listeners
+    /**
+     * Attaches close-button, backdrop-click, and Escape-key event listeners
+     * to the video modal overlay. Safe to call multiple times (no-ops if modal absent).
+     */
     function setupVideoModal() {
         if (!videoModal) return;
 
@@ -485,6 +594,12 @@
         });
     }
 
+    /**
+     * Fetches stories from the API and renders them into the Stories carousel.
+     * Hides the entire stories section on error or when no items are returned.
+     *
+     * @returns {Promise<void>}
+     */
     async function loadStories() {
         if (!storiesSection || !storiesTrack) return;
 
@@ -515,13 +630,17 @@
                 storiesSection.classList.add('stories-hidden');
             }
         } catch (e) {
-            console.error('CoffeeBrk: Failed to load stories', e);
+            console.error('[CoffeeBrk] Failed to load stories:', e);
             // Hide section on error - will show again when API is available
             storiesTrack.innerHTML = '';
             storiesSection.classList.add('stories-hidden');
         }
     }
 
+    /**
+     * Wires up prev/next navigation buttons for the Stories carousel and
+     * recalculates scroll limits on window resize.
+     */
     function setupStoriesNavigation() {
         if (!storiesTrack || !storiesPrevBtn || !storiesNextBtn) return;
 
@@ -560,6 +679,12 @@
     }
 
     // ─── Categories ──────────────────────────────────────────────────────
+    /**
+     * Fetches available categories from the API and appends them as filter
+     * pills to the category bar. Skips if showCategories setting is off.
+     *
+     * @returns {Promise<void>}
+     */
     async function loadCategories() {
         if (!settings.showCategories) return;
 
@@ -590,10 +715,17 @@
 
                 catBar.appendChild(btn);
             });
-        } catch (e) {}
+        } catch (e) { }
     }
 
     // ─── Event Listeners ─────────────────────────────────────────────────
+    /**
+     * Attaches all top-level DOM event listeners:
+     *  - Category bar pill clicks
+     *  - Error-state retry button
+     *  - chrome.storage.onChanged (live settings sync)
+     *  - System colour-scheme media query change
+     */
     function setupEventListeners() {
         // Category selection
         catBar.addEventListener('click', (e) => {
@@ -634,6 +766,11 @@
     }
 
     // ─── Infinite Scroll ─────────────────────────────────────────────────
+    /**
+     * Attaches an IntersectionObserver to a sentinel element appended below
+     * the news grid. When the sentinel enters the viewport, the next page of
+     * articles is fetched and appended automatically.
+     */
     function setupInfiniteScroll() {
         const sentinel = document.createElement('div');
         sentinel.id = 'scroll-sentinel';
