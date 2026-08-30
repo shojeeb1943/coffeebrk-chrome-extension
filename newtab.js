@@ -1,17 +1,17 @@
 /**
  * @file newtab.js
- * @description New Tab page controller for the CoffeeBrk Chrome Extension.
+ * @description New Tab page controller for the CoffeeBrk Chrome Extension (Editorial Redesign).
  *
  * Responsibilities:
  *  - Load and apply user settings from the background service worker.
- *  - Render the greeting, date/time, search bar, and quick-access shortcuts.
- *  - Fetch and display paginated news articles from the CoffeeBrk API.
- *  - Render the Stories carousel with optional video modal playback.
- *  - Dynamically populate the category filter bar.
- *  - Support infinite scroll for seamless article browsing.
- *  - React to settings changes in real time via chrome.storage.onChanged.
+ *  - Render greeting, search bar, and quick-access shortcuts.
+ *  - Fetch and display mixed news articles & video reel stories in a 3-column feed.
+ *  - Render curated X (Twitter) AI market intelligence cards in the sidebar.
+ *  - Support video modal playback for Reels/Stories.
+ *  - Infinite scroll for continuous story discovery.
+ *  - Real-time settings sync via chrome.storage.onChanged.
  *
- * @version 1.1.0
+ * @version 1.2.0
  * @author  CoffeeBrk.ai <hello@coffeebrk.ai>
  * @license Proprietary — © 2024 CoffeeBrk.ai. All rights reserved.
  */
@@ -35,75 +35,72 @@
     let isLoading = false;
     let activeCategory = '';
     let settings = null;
+    let storiesCache = [];
 
     const DEFAULT_SETTINGS = {
-        theme: 'dark',
-        accentColor: '#E07A4B',
+        theme: 'light',
+        userName: 'Hasan',
+        accentColor: '#B46938',
         cardLayout: 'grid',
         showImages: true,
         showExcerpts: true,
-        showFeaturedCard: true,
         showShortcuts: true,
+        shortcutMode: 'prefixed', // 'prefixed' | 'mostVisited'
+        shortcuts: [
+            { name: 'YouTube', url: 'https://youtube.com', icon: 'youtube', enabled: true },
+            { name: 'Figma', url: 'https://figma.com', icon: 'figma', enabled: true },
+            { name: 'Claude', url: 'https://claude.ai', icon: 'claude', enabled: true },
+            { name: 'GitHub', url: 'https://github.com', icon: 'github', enabled: true },
+            { name: 'Anthropic', url: 'https://anthropic.com', icon: 'anthropic', enabled: true },
+            { name: 'Figma', url: 'https://figma.com', icon: 'figma', enabled: true },
+            { name: 'YouTube', url: 'https://youtube.com', icon: 'youtube', enabled: true }
+        ],
+        maxShortcuts: 8,
         showSearchBar: true,
         showGreeting: true,
-        showDate: true,
-        showTime: false,
-        showCategories: true,
         searchEngine: 'google',
         customGreeting: '',
-        articlesPerPage: 20,
+        articlesPerPage: 18,
         openLinksIn: 'newTab',
         defaultCategory: ''
     };
 
     // ─── DOM refs ────────────────────────────────────────────────────────
     const grid = document.getElementById('news-grid');
+    const socialFeedEl = document.getElementById('social-feed');
     const loader = document.getElementById('loader');
     const emptyState = document.getElementById('empty-state');
     const errorState = document.getElementById('error-state');
     const retryBtn = document.getElementById('retry-btn');
     const greetingEl = document.getElementById('greeting');
-    const catBar = document.querySelector('.category-bar');
+    const userNameDisplay = document.getElementById('user-name-display');
     const searchSection = document.getElementById('search-section');
     const shortcutsSection = document.getElementById('shortcuts-section');
-    const categorySection = document.getElementById('category-section');
     const searchForm = document.getElementById('search-form');
-    const storiesSection = document.getElementById('stories-section');
-    const storiesTrack = document.getElementById('stories-track');
-    const storiesPrevBtn = document.querySelector('.stories-nav-prev');
-    const storiesNextBtn = document.querySelector('.stories-nav-next');
     const videoModal = document.getElementById('video-modal');
     const videoModalContent = document.getElementById('video-modal-content');
     const videoModalClose = document.querySelector('.video-modal__close');
     const videoModalBackdrop = document.querySelector('.video-modal__backdrop');
-
-    // Stories carousel state
-    let storiesScrollPos = 0;
-    let storiesMaxScroll = 0;
+    const loadMoreContainer = document.getElementById('load-more-container');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadMoreText = loadMoreBtn?.querySelector('.load-more-text');
 
     // ─── Initialize ──────────────────────────────────────────────────────
     async function init() {
         await loadSettings();
         applySettings();
         setGreeting();
-        updateTime();
-        loadStories();
-        loadCategories();
-        fetchNews(1);
-        setupInfiniteScroll();
+        renderShortcuts();
+        renderSocialFeed();
         setupEventListeners();
         setupVideoModal();
-        setInterval(updateTime, 60000);
+
+        // Fetch stories first then articles so we can weave them together
+        await fetchStories();
+        fetchNews(1);
     }
 
-    // ─── Settings ─────────────────────────────────────────────────────────────
-    /**
-     * Loads settings from the background service worker.
-     * Falls back to DEFAULT_SETTINGS gracefully when not running inside the
-     * extension context (e.g., during local development).
-     *
-     * @returns {Promise<void>}
-     */
+    // ─── Settings ────────────────────────────────────────────────────────
     async function loadSettings() {
         try {
             if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
@@ -113,67 +110,33 @@
                     return;
                 }
             }
-        } catch (e) {
-            // Unable to reach background worker — use compiled-in defaults.
-        }
+        } catch (e) { }
         settings = { ...DEFAULT_SETTINGS };
     }
 
-    /**
-     * Applies the current `settings` object to the DOM:
-     * theme attribute, CSS custom properties, section visibility,
-     * search-form action, and card-grid layout classes.
-     */
     function applySettings() {
-        // Theme
-        if (settings.theme === 'light') {
-            document.documentElement.setAttribute('data-theme', 'light');
+        if (settings.theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
         } else if (settings.theme === 'system') {
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
         } else {
-            document.documentElement.removeAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', 'light');
         }
 
-        // Accent color
         if (settings.accentColor) {
             document.documentElement.style.setProperty('--accent', settings.accentColor);
-            document.documentElement.style.setProperty('--accent-soft', hexToRgba(settings.accentColor, 0.12));
         }
 
-        // Visibility
         if (searchSection) searchSection.style.display = settings.showSearchBar ? '' : 'none';
         if (shortcutsSection) shortcutsSection.style.display = settings.showShortcuts ? '' : 'none';
-        if (categorySection) categorySection.style.display = settings.showCategories ? '' : 'none';
 
-        // Search engine
         if (searchForm && settings.searchEngine) {
             searchForm.action = SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES.google;
         }
 
-        // Card layout
-        if (grid) {
-            grid.classList.remove('news-grid--list', 'news-grid--compact');
-            if (settings.cardLayout === 'list') grid.classList.add('news-grid--list');
-            if (settings.cardLayout === 'compact') grid.classList.add('news-grid--compact');
-        }
-
-        // Default category
         if (settings.defaultCategory) activeCategory = settings.defaultCategory;
-    }
-
-    /**
-     * Converts a 6-digit hex colour string to an rgba() value.
-     *
-     * @param  {string} hex    Hex colour, e.g. '#E07A4B'.
-     * @param  {number} alpha  Opacity in the range [0, 1].
-     * @returns {string}        CSS rgba() string.
-     */
-    function hexToRgba(hex, alpha) {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        renderShortcuts();
     }
 
     // ─── Greeting ────────────────────────────────────────────────────────
@@ -183,234 +146,364 @@
             greetingEl.style.display = 'none';
             return;
         }
-        greetingEl.style.display = '';
-
-        const h = new Date().getHours();
-        let msg, icon;
+        greetingEl.style.display = 'flex';
 
         if (settings.customGreeting) {
-            msg = settings.customGreeting;
-            icon = '';
+            const leadEl = greetingEl.querySelector('.greeting-lead');
+            if (leadEl) leadEl.textContent = settings.customGreeting;
+            if (userNameDisplay) userNameDisplay.textContent = '';
         } else {
-            if (h < 5) { msg = 'Good night'; icon = '🌙'; }
-            else if (h < 12) { msg = 'Good morning'; icon = '☀️'; }
-            else if (h < 17) { msg = 'Good afternoon'; icon = '🌤️'; }
-            else if (h < 21) { msg = 'Good evening'; icon = '🌅'; }
-            else { msg = 'Good night'; icon = '🌙'; }
+            const name = settings.userName || 'Hasan';
+            if (userNameDisplay) userNameDisplay.textContent = name;
         }
-
-        const iconEl = greetingEl.querySelector('.greeting-icon');
-        const textEl = greetingEl.querySelector('.greeting-text');
-        if (iconEl) iconEl.textContent = icon;
-        if (textEl) textEl.textContent = msg;
     }
 
-    function updateTime() {
-        const timeEl = document.getElementById('current-time');
-        if (!timeEl) return;
-
-        if (settings.showTime) {
-            timeEl.textContent = new Date().toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-            timeEl.style.display = '';
-        } else if (settings.showDate) {
-            timeEl.textContent = new Date().toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-            });
-            timeEl.style.display = '';
-        } else {
-            timeEl.style.display = 'none';
+    // ─── Shortcuts Rendering (Prefixed / Most Visited) ───────────────────
+    function renderShortcuts() {
+        if (!shortcutsSection) return;
+        if (!settings.showShortcuts) {
+            shortcutsSection.style.display = 'none';
+            return;
         }
+        shortcutsSection.style.display = 'flex';
+
+        if (settings.shortcutMode === 'mostVisited' && typeof chrome !== 'undefined' && chrome.topSites?.get) {
+            try {
+                chrome.topSites.get((sites) => {
+                    if (sites && sites.length > 0) {
+                        const maxCount = settings.maxShortcuts || 8;
+                        const formatted = sites.slice(0, maxCount).map(s => ({
+                            name: s.title || getDomain(s.url),
+                            url: s.url,
+                            enabled: true
+                        }));
+                        buildShortcutElements(formatted);
+                    } else {
+                        buildShortcutElements(getPrefixedShortcuts());
+                    }
+                });
+                return;
+            } catch (e) { }
+        }
+
+        buildShortcutElements(getPrefixedShortcuts());
+    }
+
+    function getPrefixedShortcuts() {
+        const list = settings.shortcuts || DEFAULT_SETTINGS.shortcuts;
+        const enabled = list.filter(s => s.enabled !== false);
+        return enabled.length > 0 ? enabled : DEFAULT_SETTINGS.shortcuts;
+    }
+
+    function getDomain(urlStr) {
+        try {
+            return new URL(urlStr).hostname.replace(/^www\./, '');
+        } catch (e) {
+            return urlStr;
+        }
+    }
+
+    function getShortcutIconHtml(shortcut) {
+        const url = shortcut.url || '';
+        const iconKey = (shortcut.icon || '').toLowerCase();
+        const domain = getDomain(url).toLowerCase();
+
+        // YouTube
+        if (iconKey === 'youtube' || domain.includes('youtube.com') || domain.includes('youtu.be')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--youtube">
+                    <svg viewBox="0 0 24 24" fill="white">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                </div>`;
+        }
+
+        // Figma
+        if (iconKey === 'figma' || domain.includes('figma.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--figma">
+                    <svg viewBox="0 0 38 57" width="18" height="26">
+                        <path fill="#0ACF83" d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z"/>
+                        <path fill="#A259FF" d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 1 1-19 0z"/>
+                        <path fill="#F24E1E" d="M0 28.5A9.5 9.5 0 0 1 9.5 19H19v19H9.5A9.5 9.5 0 0 1 0 28.5z"/>
+                        <path fill="#FF7262" d="M0 9.5A9.5 9.5 0 0 1 9.5 0H19v19H9.5A9.5 9.5 0 0 1 0 9.5z"/>
+                        <path fill="#1ABCFE" d="M19 0h9.5a9.5 9.5 0 1 1 0 19H19V0z"/>
+                    </svg>
+                </div>`;
+        }
+
+        // Claude / Anthropic
+        if (iconKey === 'claude' || iconKey === 'anthropic' || domain.includes('claude.ai') || domain.includes('anthropic.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--claude">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="#D97757">
+                        <path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z" fill="#D97757"/>
+                        <path d="M18 16L18.9 19.1L22 20L18.9 20.9L18 24L17.1 20.9L14 20L17.1 19.1L18 16Z" fill="#D97757"/>
+                        <path d="M6 16L6.9 19.1L10 20L6.9 20.9L6 24L5.1 20.9L2 20L5.1 19.1L6 16Z" fill="#D97757"/>
+                    </svg>
+                </div>`;
+        }
+
+        // GitHub
+        if (iconKey === 'github' || domain.includes('github.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--github">
+                    <svg viewBox="0 0 24 24" fill="white">
+                        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.164 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                    </svg>
+                </div>`;
+        }
+
+        // X / Twitter
+        if (iconKey === 'x' || domain.includes('x.com') || domain.includes('twitter.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--x">
+                    <svg viewBox="0 0 24 24" fill="white">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                </div>`;
+        }
+
+        // Gmail
+        if (iconKey === 'gmail' || domain.includes('mail.google.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--gmail">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><path fill="#EA4335" d="M20 18h-2V9.25L12 13 6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20v12z"/></svg>
+                </div>`;
+        }
+
+        // ChatGPT / OpenAI
+        if (iconKey === 'chatgpt' || domain.includes('openai.com')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--chatgpt">
+                    <svg viewBox="0 0 24 24" fill="white"><path d="M22.282 9.821a5.985 5.985 0 00-.516-4.91 6.046 6.046 0 00-6.51-2.9A6.065 6.065 0 0011.052.5a6.044 6.044 0 00-5.79 4.26 6.028 6.028 0 00-4.035 2.921 6.044 6.044 0 00.745 7.09 5.985 5.985 0 00.516 4.91 6.046 6.046 0 006.51 2.9A6.065 6.065 0 0012.95 23.5a6.044 6.044 0 005.79-4.26 6.028 6.028 0 004.035-2.921 6.043 6.043 0 00-.493-6.498zM12.95 21.654a4.508 4.508 0 01-2.9-1.055l.144-.08 4.818-2.782a.783.783 0 00.395-.678v-6.79l2.037 1.176a.071.071 0 01.039.055v5.627a4.527 4.527 0 01-4.533 4.527zM3.584 17.656a4.494 4.494 0 01-.538-3.028l.144.085 4.818 2.782a.779.779 0 00.789 0l5.884-3.398v2.352a.07.07 0 01-.028.061l-4.87 2.813a4.527 4.527 0 01-6.199-1.667zM2.308 7.877a4.494 4.494 0 012.362-1.973V11.6a.78.78 0 00.395.678l5.884 3.398-2.037 1.176a.072.072 0 01-.067.006l-4.87-2.813A4.527 4.527 0 012.308 7.877zm16.56 3.858l-5.884-3.398 2.037-1.176a.072.072 0 01.067-.006l4.87 2.813a4.525 4.525 0 01-.7 8.164v-5.72a.78.78 0 00-.39-.677zm2.028-3.044l-.144-.085-4.818-2.782a.779.779 0 00-.789 0l-5.884 3.398V6.87a.07.07 0 01.028-.061l4.87-2.813a4.527 4.527 0 016.737 4.695zm-12.727 4.19L6.132 11.704a.071.071 0 01-.039-.055V6.022a4.527 4.527 0 017.433-3.472l-.144.08-4.818 2.782a.783.783 0 00-.395.678v6.79zm1.106-2.385l2.621-1.513 2.621 1.513v3.026l-2.621 1.513-2.621-1.513V10.496z"/></svg>
+                </div>`;
+        }
+
+        // CoffeeBrk
+        if (iconKey === 'coffeebrk' || domain.includes('coffeebrk.ai')) {
+            return `
+                <div class="shortcut-circle shortcut-circle--coffeebrk">
+                    <svg viewBox="0 0 24 24" fill="white"><path d="M2 21V17C2 14.79 3.79 13 6 13H14C16.21 13 18 14.79 18 17V21H2ZM18 9H20C21.1 9 22 9.9 22 11V13C22 14.1 21.1 15 20 15H18V9ZM4 9H16V5C16 3.9 15.1 3 14 3H6C4.9 3 4 3.9 4 5V9Z"/></svg>
+                </div>`;
+        }
+
+        // Generic / Fallback using Google Favicon Service or letter monogram
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+        const initial = (shortcut.name || domain || 'W').charAt(0).toUpperCase();
+
+        return `
+            <div class="shortcut-circle shortcut-circle--custom">
+                <img src="${faviconUrl}" alt="${escapeHtml(shortcut.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                <span class="shortcut-letter" style="display:none">${escapeHtml(initial)}</span>
+            </div>`;
+    }
+
+    function buildShortcutElements(shortcuts) {
+        shortcutsSection.innerHTML = '';
+        shortcuts.forEach(s => {
+            const link = document.createElement('a');
+            link.href = s.url;
+            link.className = 'shortcut-pill';
+            link.title = s.name || s.url;
+            link.target = settings.openLinksIn === 'sameTab' ? '_self' : '_blank';
+            link.innerHTML = getShortcutIconHtml(s);
+            shortcutsSection.appendChild(link);
+        });
+
+        // Add customizable button '+' linking to options
+        const addBtn = document.createElement('a');
+        addBtn.href = 'options.html#shortcuts';
+        addBtn.className = 'shortcut-pill';
+        addBtn.title = 'Customize Shortcuts';
+        addBtn.innerHTML = `
+            <div class="shortcut-circle shortcut-circle--add">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </div>`;
+        shortcutsSection.appendChild(addBtn);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────
-    /**
-     * Returns a human-readable relative time string for the given ISO date.
-     *
-     * @param  {string} dateStr  ISO 8601 date string.
-     * @returns {string}          E.g. 'just now', '5m ago', '2h ago', 'Mar 3'.
-     */
-    function timeAgo(dateStr) {
-        const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-
-    /**
-     * Estimates reading time for a piece of text at 200 words per minute.
-     *
-     * @param  {string} text  Plain-text excerpt or body content.
-     * @returns {string}       E.g. '3 min'.
-     */
-    function estimateReadTime(text) {
-        if (!text) return '1 min';
-        const words = text.split(/\s+/).length;
-        const mins = Math.max(1, Math.ceil(words / 200));
-        return mins + ' min';
-    }
-
-    /**
-     * Returns the uppercase first character of a source name, used as a
-     * fallback avatar for articles without a thumbnail.
-     *
-     * @param  {string} [source]  Source publication name.
-     * @returns {string}           Single uppercase letter, default 'C'.
-     */
-    function getSourceInitial(source) {
-        if (!source) return 'C';
-        return source.charAt(0).toUpperCase();
-    }
-
-    /**
-     * Safely HTML-encodes a string by delegating to the browser's own text-node
-     * serialiser — avoids regex-based escaping edge-cases.
-     *
-     * @param  {string} str  Raw string that may contain HTML characters.
-     * @returns {string}      HTML-safe string.
-     */
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str || '';
         return div.innerHTML;
     }
 
-    // ─── Skeleton ────────────────────────────────────────────────────────
+    function formatArticleDate(dateStr) {
+        if (!dateStr) return 'September 17, 2025';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            return date.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    // ─── Skeleton Loading ────────────────────────────────────────────────
     function showSkeletons(count = 6) {
         grid.innerHTML = '';
         for (let i = 0; i < count; i++) {
             const el = document.createElement('div');
-            el.className = 'skeleton-card';
+            el.className = 'skeleton-article';
             el.innerHTML = `
-                <div class="skeleton-image"></div>
-                <div class="skeleton-body">
-                    <div class="skeleton-line skeleton-line--short"></div>
-                    <div class="skeleton-line"></div>
-                    <div class="skeleton-line skeleton-line--medium"></div>
-                </div>
+                <div class="skeleton-article__img"></div>
+                <div class="skeleton-article__line" style="width: 35%;"></div>
+                <div class="skeleton-article__line" style="width: 90%;"></div>
+                <div class="skeleton-article__line" style="width: 75%;"></div>
             `;
             grid.appendChild(el);
         }
     }
 
-    // ─── Card Rendering ──────────────────────────────────────────────────
-    /**
-     * Creates and returns a DOM <article> element for a single news article.
-     *
-     * @param  {Object}  article            Article data from the API.
-     * @param  {number}  index              Position in the current page (used for CSS stagger delay).
-     * @param  {boolean} [featured=false]   When true, applies the featured-card style to the first item.
-     * @returns {HTMLElement}               The constructed article card element.
-     */
-    function createCard(article, index, featured = false) {
-        const card = document.createElement('article');
-        const isFeatured = featured && settings.showFeaturedCard;
-        card.className = 'news-card' + (isFeatured ? ' news-card--featured' : '');
-        card.style.animationDelay = `${index * 0.04}s`;
-
-        const catName = article.categories?.[0]?.name || '';
-        const sourceName = article.source || 'CoffeeBrk';
-        const readTime = estimateReadTime(article.excerpt);
-
-        // Image
-        let imageHtml = '';
-        if (settings.showImages) {
-            if (article.image) {
-                imageHtml = `
-                    <div class="news-card__image-wrapper">
-                        <img class="news-card__image"
-                             src="${escapeHtml(article.image)}"
-                             alt=""
-                             loading="lazy"
-                             data-fallback="true">
-                    </div>`;
-            } else {
-                imageHtml = `
-                    <div class="news-card__image-wrapper">
-                        <div class="news-card__image news-card__image--placeholder">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1" opacity="0.3">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <path d="M21 15l-5-5L5 21"/>
-                            </svg>
-                        </div>
-                    </div>`;
+    // ─── Stories / Reels Fetching ────────────────────────────────────────
+    async function fetchStories() {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            const res = await fetch(`${API_BASE}/stories?limit=6`, {
+                signal: controller.signal,
+                headers: { 'Accept': 'application/json' }
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.items?.length > 0) {
+                    storiesCache = data.items;
+                    return;
+                }
             }
-        }
+        } catch (e) { }
 
-        // Excerpt
-        const excerptHtml = settings.showExcerpts && article.excerpt
-            ? `<p class="news-card__excerpt">${escapeHtml(article.excerpt)}</p>`
-            : '';
+        // No stories available (fetch failed or returned none) — leave storiesCache
+        // empty; callers already skip reel cards when it's empty.
+        storiesCache = [];
+    }
+
+    // ─── Card Builders ───────────────────────────────────────────────────
+
+    /**
+     * Standard News Article Card
+     */
+    function createArticleCard(article) {
+        const card = document.createElement('article');
+        card.className = 'article-card';
+
+        const sourceName = article.source || 'Google';
+        const formattedDate = formatArticleDate(article.date || article.published_at || article.date_gmt);
+        const imageUrl = article.image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
 
         card.innerHTML = `
-            ${imageHtml}
-            <div class="news-card__body">
-                <h3 class="news-card__title">${escapeHtml(article.title)}</h3>
-                ${excerptHtml}
+            <div class="article-card__thumb">
+                <img class="article-card__img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(article.title)}" loading="lazy">
             </div>
-            <div class="news-card__footer">
-                <span class="news-card__source">${escapeHtml(sourceName)}</span>
-                <span class="news-card__link-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.33">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <path d="M9 15l6-6M15 15v-6h-6"/>
-                    </svg>
-                </span>
+            <div class="article-card__body">
+                <span class="article-card__source">${escapeHtml(sourceName)}</span>
+                <h3 class="article-card__title">${escapeHtml(article.title)}</h3>
+                <div class="article-card__footer">
+                    <span class="article-card__date">${escapeHtml(formattedDate)}</span>
+                    <span class="article-card__link-icon" title="Read Article">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"/>
+                            <path d="M10 14L15 9"/>
+                            <path d="M11 9h4v4"/>
+                        </svg>
+                    </span>
+                </div>
             </div>
         `;
 
-        // Handle image load errors (CSP-compliant)
-        const img = card.querySelector('img[data-fallback="true"]');
+        // Handle image error fallback
+        const img = card.querySelector('.article-card__img');
         if (img) {
             img.addEventListener('error', function () {
-                this.style.display = 'none';
+                this.src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
             });
         }
 
         card.addEventListener('click', () => {
             trackArticleRead();
             const target = settings.openLinksIn === 'sameTab' ? '_self' : '_blank';
-            // Use source_url if available, otherwise fall back to permalink
-            const url = article.source_url || article.permalink;
+            const url = article.source_url || article.permalink || article.link || 'https://coffeebrk.ai';
             window.open(url, target);
         });
 
         return card;
     }
 
+    const REEL_COLUMNS = [1, 3, 2]; // Alternates Left (Col 1), Right (Col 3), Center (Col 2)
+    let totalReelsRendered = 0;
+
     /**
-     * Increments the daily articles-read counter stored in localStorage.
-     * Resets to zero when the stored date does not match today.
-     * Used only for the popup stats display — no data leaves the device.
+     * Tall Video Reel / Story Card
      */
-    function trackArticleRead() {
-        try {
-            const today = new Date().toDateString();
-            const stored = localStorage.getItem('coffeebrk_articles_read');
-            let data = stored ? JSON.parse(stored) : { date: today, count: 0 };
-            if (data.date !== today) data = { date: today, count: 0 };
-            data.count++;
-            localStorage.setItem('coffeebrk_articles_read', JSON.stringify(data));
-        } catch (e) { }
+    function createReelCard(story, colNum = 1) {
+        const card = document.createElement('article');
+        card.className = `reel-card reel-card--col-${colNum}`;
+
+        const sourceName = story.source || 'Google';
+        const formattedDate = formatArticleDate(story.date || 'September 17, 2025');
+        const imageUrl = story.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80';
+        const caption = story.caption || 'with a setting that you like.';
+
+        card.innerHTML = `
+            <div class="reel-card__video-wrap">
+                <img class="reel-card__img" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(story.title)}" loading="lazy">
+                <div class="reel-card__overlay"></div>
+                <div class="reel-card__play-btn" aria-label="Play Reel">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="6 4 20 12 6 20 6 4"/>
+                    </svg>
+                </div>
+                <div class="reel-card__caption">${escapeHtml(caption)}</div>
+            </div>
+            <div class="reel-card__body">
+                <span class="reel-card__source">${escapeHtml(sourceName)}</span>
+                <h3 class="reel-card__title">${escapeHtml(story.title)}</h3>
+                <div class="reel-card__footer">
+                    <span class="reel-card__date">${escapeHtml(formattedDate)}</span>
+                    <span class="reel-card__link-icon" title="View Reel">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"/>
+                            <path d="M10 14L15 9"/>
+                            <path d="M11 9h4v4"/>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+        `;
+
+        card.addEventListener('click', () => {
+            if (story.video_url) {
+                openVideoModal(story.video_url);
+            } else {
+                window.open('https://coffeebrk.ai', '_blank');
+            }
+        });
+
+        return card;
     }
 
-    // ─── Fetch News ──────────────────────────────────────────────────────
     /**
-     * Fetches a page of articles from the CoffeeBrk API and renders them.
-     *
-     * @param  {number}  [page=1]       1-based page number to fetch.
-     * @param  {boolean} [append=false] When true, appends cards to the existing
-     *                                  grid instead of replacing it (infinite scroll).
-     * @returns {Promise<void>}
+     * Renders Curated Social Cards in the Right Sidebar.
+     * No live social feed source exists yet, so the sidebar is hidden rather
+     * than showing fabricated posts. Wire this up to a real API_BASE/social
+     * endpoint once one exists.
      */
+    function renderSocialFeed() {
+        if (!socialFeedEl) return;
+        socialFeedEl.closest('.sidebar-column')?.style.setProperty('display', 'none');
+    }
+
+    // ─── Fetch News Articles ─────────────────────────────────────────────
     async function fetchNews(page = 1, append = false) {
         if (isLoading) return;
         isLoading = true;
@@ -419,15 +512,20 @@
             showSkeletons();
             emptyState.style.display = 'none';
             errorState.style.display = 'none';
+            if (loadMoreContainer) loadMoreContainer.style.display = 'none';
         } else {
-            loader.style.display = 'flex';
+            if (loadMoreBtn) {
+                loadMoreBtn.classList.add('loading');
+                loadMoreBtn.disabled = true;
+            }
+            if (loadMoreText) loadMoreText.textContent = 'Loading Stories...';
         }
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
 
         try {
-            const perPage = settings.articlesPerPage || 20;
+            const perPage = settings.articlesPerPage || 18;
             let url = `${API_BASE}/posts?page=${page}&per_page=${perPage}`;
             if (activeCategory) url += `&category=${encodeURIComponent(activeCategory)}`;
 
@@ -442,110 +540,73 @@
             totalPages = data.total_pages || 1;
             currentPage = page;
 
-            if (!append) grid.innerHTML = '';
-
-            if (data.items?.length > 0) {
-                data.items.forEach((article, i) => {
-                    const featured = !append && page === 1 && i === 0;
-                    grid.appendChild(createCard(article, i, featured));
-                });
-                emptyState.style.display = 'none';
-            } else if (!append) {
-                emptyState.style.display = 'block';
-            }
-
-            errorState.style.display = 'none';
-        } catch (err) {
-            console.error('[CoffeeBrk] Article fetch failed:', err);
             if (!append) {
                 grid.innerHTML = '';
-                errorState.style.display = 'block';
+                totalReelsRendered = 0;
             }
+
+            const items = data.items || [];
+
+            if (items.length === 0 && !append) {
+                emptyState.style.display = 'block';
+                errorState.style.display = 'none';
+                if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+            } else {
+                // Weave Stories/Reels and News into the Bento Box dense feed (Left -> Right -> Center)
+                items.forEach((article, i) => {
+                    // Insert a tall reel every 4 articles (indices 0, 4, 8, etc.)
+                    if (storiesCache.length > 0 && i % 4 === 0) {
+                        const story = storiesCache[totalReelsRendered % storiesCache.length];
+                        const colNum = REEL_COLUMNS[totalReelsRendered % REEL_COLUMNS.length];
+                        grid.appendChild(createReelCard(story, colNum));
+                        totalReelsRendered++;
+                    }
+                    grid.appendChild(createArticleCard(article));
+                });
+
+                emptyState.style.display = 'none';
+                errorState.style.display = 'none';
+                if (loadMoreContainer) loadMoreContainer.style.display = 'flex';
+            }
+        } catch (err) {
+            console.error('[CoffeeBrk] Article fetch failed:', err);
+            currentPage = page;
+            if (!append) {
+                grid.innerHTML = '';
+                totalReelsRendered = 0;
+                emptyState.style.display = 'none';
+                errorState.style.display = 'block';
+                if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+            }
+            // On a failed "load more", just leave the existing grid as-is so the user can retry.
         } finally {
             clearTimeout(timeout);
             isLoading = false;
             loader.style.display = 'none';
-        }
-    }
-
-    // ─── Stories Carousel ────────────────────────────────────────────────
-    function showStoriesSkeletons(count = 6) {
-        if (!storiesTrack) return;
-        storiesTrack.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-            const el = document.createElement('div');
-            el.className = 'story-skeleton';
-            storiesTrack.appendChild(el);
-        }
-    }
-
-    /**
-     * Creates and returns a DOM element representing a single Story card.
-     *
-     * @param  {Object}   story               Story data from the API.
-     * @param  {string}   story.title          Displayed title.
-     * @param  {string}   [story.image]        Background image URL.
-     * @param  {string}   [story.gradient]     Fallback gradient / overlay colour.
-     * @param  {number}   [story.gradient_intensity] Overlay opacity hint (0–100).
-     * @param  {string}   [story.text_color]   Title text colour.
-     * @param  {string}   [story.video_url]    Optional video URL; shows play button.
-     * @returns {HTMLElement}  The constructed story card element.
-     */
-    function createStoryCard(story) {
-        const card = document.createElement('div');
-        card.className = 'story-card';
-
-        // Background image or gradient
-        const bgStyle = story.image
-            ? `background-image: url('${escapeHtml(story.image)}')`
-            : `background: ${story.gradient || '#F5F5FF'}`;
-
-        // Overlay gradient using story gradient color
-        const gradientColor = story.gradient || '#000';
-        const intensity = story.gradient_intensity || 50;
-        const overlayOpacity = intensity / 100;
-
-        card.innerHTML = `
-            <div class="story-card__bg" style="${bgStyle}"></div>
-            <div class="story-card__overlay" style="background: linear-gradient(to top, ${hexToRgba(gradientColor, overlayOpacity * 0.8)} 0%, ${hexToRgba(gradientColor, overlayOpacity * 0.3)} 50%, transparent 100%)"></div>
-            <div class="story-card__content">
-                <span class="story-card__title" style="color: ${story.text_color || '#fff'}">${escapeHtml(story.title)}</span>
-            </div>
-            ${story.video_url ? `
-                <div class="story-card__play">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                </div>
-            ` : ''}
-        `;
-
-        card.addEventListener('click', () => {
-            if (story.video_url) {
-                openVideoModal(story.video_url);
+            if (loadMoreBtn) {
+                loadMoreBtn.classList.remove('loading');
+                loadMoreBtn.disabled = false;
             }
-        });
-
-        return card;
+            if (loadMoreText) loadMoreText.textContent = 'Load More Stories';
+        }
     }
 
-    // ─── Video Modal ──────────────────────────────────────────────────────────
-    /**
-     * Returns true if the given video URL represents a vertical / Shorts format.
-     *
-     * @param  {string} url  Video URL to inspect.
-     * @returns {boolean}
-     */
+    function trackArticleRead() {
+        try {
+            const today = new Date().toDateString();
+            const stored = localStorage.getItem('coffeebrk_articles_read');
+            let data = stored ? JSON.parse(stored) : { date: today, count: 0 };
+            if (data.date !== today) data = { date: today, count: 0 };
+            data.count++;
+            localStorage.setItem('coffeebrk_articles_read', JSON.stringify(data));
+        } catch (e) { }
+    }
+
+    // ─── Video Modal ─────────────────────────────────────────────────────
     function isVerticalVideo(url) {
         return url && url.includes('/shorts/');
     }
 
-    /**
-     * Opens the video modal and loads the given URL via the API proxy iframe.
-     * Adjusts the modal container class for vertical (Shorts) vs landscape video.
-     *
-     * @param  {string} url  Original video URL to embed.
-     */
     function openVideoModal(url) {
         const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
@@ -553,10 +614,10 @@
 
         if (isVertical) {
             videoModalContent.classList.remove('landscape');
-            container.classList.remove('landscape');
+            container?.classList.remove('landscape');
         } else {
             videoModalContent.classList.add('landscape');
-            container.classList.add('landscape');
+            container?.classList.add('landscape');
         }
 
         videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
@@ -564,29 +625,19 @@
         document.body.style.overflow = 'hidden';
     }
 
-    /**
-     * Closes the video modal and clears the iframe src after the CSS transition.
-     */
     function closeVideoModal() {
         videoModal.classList.remove('active');
         document.body.style.overflow = '';
-        // Delay clearing to allow animation
         setTimeout(() => {
             videoModalContent.innerHTML = '';
         }, 300);
     }
 
-    /**
-     * Attaches close-button, backdrop-click, and Escape-key event listeners
-     * to the video modal overlay. Safe to call multiple times (no-ops if modal absent).
-     */
     function setupVideoModal() {
         if (!videoModal) return;
-
         videoModalClose?.addEventListener('click', closeVideoModal);
         videoModalBackdrop?.addEventListener('click', closeVideoModal);
 
-        // Close on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && videoModal.classList.contains('active')) {
                 closeVideoModal();
@@ -594,196 +645,32 @@
         });
     }
 
-    /**
-     * Fetches stories from the API and renders them into the Stories carousel.
-     * Hides the entire stories section on error or when no items are returned.
-     *
-     * @returns {Promise<void>}
-     */
-    async function loadStories() {
-        if (!storiesSection || !storiesTrack) return;
-
-        showStoriesSkeletons(6);
-
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000);
-
-            const res = await fetch(`${API_BASE}/stories?limit=10`, {
-                signal: controller.signal,
-                headers: { 'Accept': 'application/json' }
-            });
-
-            clearTimeout(timeout);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
-
-            if (data.items?.length > 0) {
-                storiesTrack.innerHTML = '';
-                data.items.forEach(story => {
-                    storiesTrack.appendChild(createStoryCard(story));
-                });
-                storiesSection.classList.remove('stories-hidden');
-                setupStoriesNavigation();
-            } else {
-                storiesSection.classList.add('stories-hidden');
-            }
-        } catch (e) {
-            console.error('[CoffeeBrk] Failed to load stories:', e);
-            // Hide section on error - will show again when API is available
-            storiesTrack.innerHTML = '';
-            storiesSection.classList.add('stories-hidden');
-        }
-    }
-
-    /**
-     * Wires up prev/next navigation buttons for the Stories carousel and
-     * recalculates scroll limits on window resize.
-     */
-    function setupStoriesNavigation() {
-        if (!storiesTrack || !storiesPrevBtn || !storiesNextBtn) return;
-
-        const cardWidth = 160 + 16; // card width + gap
-        const visibleWidth = storiesTrack.parentElement.offsetWidth;
-        const totalWidth = storiesTrack.scrollWidth;
-        storiesMaxScroll = Math.max(0, totalWidth - visibleWidth);
-
-        function updateNavButtons() {
-            storiesPrevBtn.disabled = storiesScrollPos <= 0;
-            storiesNextBtn.disabled = storiesScrollPos >= storiesMaxScroll;
-        }
-
-        function scrollStories(direction) {
-            const scrollAmount = cardWidth * 3; // Scroll 3 cards at a time
-            storiesScrollPos = Math.max(0, Math.min(storiesMaxScroll,
-                storiesScrollPos + (direction * scrollAmount)));
-            storiesTrack.style.transform = `translateX(-${storiesScrollPos}px)`;
-            updateNavButtons();
-        }
-
-        storiesPrevBtn.addEventListener('click', () => scrollStories(-1));
-        storiesNextBtn.addEventListener('click', () => scrollStories(1));
-
-        updateNavButtons();
-
-        // Recalculate on resize
-        window.addEventListener('resize', () => {
-            const newVisibleWidth = storiesTrack.parentElement.offsetWidth;
-            const newTotalWidth = storiesTrack.scrollWidth;
-            storiesMaxScroll = Math.max(0, newTotalWidth - newVisibleWidth);
-            storiesScrollPos = Math.min(storiesScrollPos, storiesMaxScroll);
-            storiesTrack.style.transform = `translateX(-${storiesScrollPos}px)`;
-            updateNavButtons();
-        });
-    }
-
-    // ─── Categories ──────────────────────────────────────────────────────
-    /**
-     * Fetches available categories from the API and appends them as filter
-     * pills to the category bar. Skips if showCategories setting is off.
-     *
-     * @returns {Promise<void>}
-     */
-    async function loadCategories() {
-        if (!settings.showCategories) return;
-
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000);
-
-            const res = await fetch(`${API_BASE}/categories`, {
-                signal: controller.signal,
-                headers: { 'Accept': 'application/json' }
-            });
-
-            clearTimeout(timeout);
-            if (!res.ok) return;
-
-            const cats = await res.json();
-            cats.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.className = 'cat-pill';
-                btn.dataset.category = cat.slug;
-                btn.textContent = cat.name;
-
-                if (cat.slug === activeCategory) {
-                    btn.classList.add('active');
-                    const allBtn = catBar.querySelector('.cat-pill[data-category=""]');
-                    if (allBtn) allBtn.classList.remove('active');
-                }
-
-                catBar.appendChild(btn);
-            });
-        } catch (e) { }
-    }
-
     // ─── Event Listeners ─────────────────────────────────────────────────
-    /**
-     * Attaches all top-level DOM event listeners:
-     *  - Category bar pill clicks
-     *  - Error-state retry button
-     *  - chrome.storage.onChanged (live settings sync)
-     *  - System colour-scheme media query change
-     */
     function setupEventListeners() {
-        // Category selection
-        catBar.addEventListener('click', (e) => {
-            const pill = e.target.closest('.cat-pill');
-            if (!pill) return;
+        retryBtn?.addEventListener('click', () => fetchNews(1));
 
-            catBar.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-
-            activeCategory = pill.dataset.category || '';
-            currentPage = 1;
-            fetchNews(1);
+        loadMoreBtn?.addEventListener('click', () => {
+            if (!isLoading) {
+                fetchNews(currentPage + 1, true);
+            }
         });
 
-        // Retry
-        retryBtn.addEventListener('click', () => fetchNews(1));
-
-        // Settings changes
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.onChanged.addListener((changes, namespace) => {
                 if (namespace === 'sync' && changes.settings) {
                     settings = { ...DEFAULT_SETTINGS, ...changes.settings.newValue };
                     applySettings();
                     setGreeting();
-                    updateTime();
-                    // Reload news to apply new card layout
                     fetchNews(1);
                 }
             });
         }
 
-        // System theme change
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             if (settings.theme === 'system') {
                 document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
             }
         });
-    }
-
-    // ─── Infinite Scroll ─────────────────────────────────────────────────
-    /**
-     * Attaches an IntersectionObserver to a sentinel element appended below
-     * the news grid. When the sentinel enters the viewport, the next page of
-     * articles is fetched and appended automatically.
-     */
-    function setupInfiniteScroll() {
-        const sentinel = document.createElement('div');
-        sentinel.id = 'scroll-sentinel';
-        sentinel.style.height = '1px';
-        document.querySelector('.news-section').appendChild(sentinel);
-
-        const observer = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && !isLoading && currentPage < totalPages) {
-                fetchNews(currentPage + 1, true);
-            }
-        }, { rootMargin: '400px' });
-
-        observer.observe(sentinel);
     }
 
     // ─── Start ───────────────────────────────────────────────────────────

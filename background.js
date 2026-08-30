@@ -40,8 +40,8 @@ const ALARM_NAME = 'refreshCache';
  */
 const DEFAULT_SETTINGS = {
     // ── Appearance ─────────────────────────────────────────────────────────
-    theme: 'dark',            // 'dark' | 'light' | 'system'
-    accentColor: '#E07A4B',   // Warm orange accent
+    theme: 'light',           // 'dark' | 'light' | 'system'
+    accentColor: '#B46938',   // Warm orange accent
     cardLayout: 'grid',       // 'grid' | 'list' | 'compact'
     showImages: true,
     showExcerpts: true,
@@ -49,12 +49,13 @@ const DEFAULT_SETTINGS = {
 
     // ── Content ────────────────────────────────────────────────────────────
     defaultCategory: '',
-    articlesPerPage: 20,
+    articlesPerPage: 18,
     showFeaturedCard: true,
     openLinksIn: 'newTab',    // 'newTab' | 'sameTab'
 
     // ── Shortcuts ──────────────────────────────────────────────────────────
     showShortcuts: true,
+    shortcutMode: 'prefixed',
     shortcuts: [
         { name: 'Gmail', url: 'https://mail.google.com', icon: 'gmail', enabled: true },
         { name: 'YouTube', url: 'https://youtube.com', icon: 'youtube', enabled: true },
@@ -73,6 +74,7 @@ const DEFAULT_SETTINGS = {
 
     // ── Greeting ───────────────────────────────────────────────────────────
     showGreeting: true,
+    userName: 'Hasan',
     customGreeting: '',
     showDate: true,
     showTime: false,

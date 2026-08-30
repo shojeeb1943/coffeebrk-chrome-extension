@@ -28,17 +28,19 @@
      * @type {Object}
      */
     const DEFAULT_SETTINGS = {
-        theme: 'dark',
-        accentColor: '#E07A4B',
+        theme: 'light',
+        accentColor: '#B46938',
         cardLayout: 'grid',
-        showImages: true,
+        showImages: true
+        ,
         showExcerpts: true,
         cardsPerRow: 3,
         defaultCategory: '',
-        articlesPerPage: 20,
+        articlesPerPage: 18,
         showFeaturedCard: true,
         openLinksIn: 'newTab',
         showShortcuts: true,
+        shortcutMode: 'prefixed',
         shortcuts: [
             { name: 'Gmail', url: 'https://mail.google.com', icon: 'gmail', enabled: true },
             { name: 'YouTube', url: 'https://youtube.com', icon: 'youtube', enabled: true },
@@ -53,6 +55,7 @@
         searchEngine: 'google',
         showSearchBar: true,
         showGreeting: true,
+        userName: 'Hasan',
         customGreeting: '',
         showDate: true,
         showTime: false,
@@ -296,6 +299,16 @@
      */
     function setupShortcutsManager() {
         setupToggle('showShortcuts');
+
+        const shortcutModeEl = document.getElementById('shortcutMode');
+        if (shortcutModeEl) {
+            shortcutModeEl.value = currentSettings.shortcutMode || 'prefixed';
+            shortcutModeEl.addEventListener('change', (e) => {
+                currentSettings.shortcutMode = e.target.value;
+                saveSettings();
+            });
+        }
+
         renderShortcuts();
 
         document.getElementById('addShortcut').addEventListener('click', () => {
