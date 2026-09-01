@@ -62,6 +62,7 @@
         autoRefresh: true,
         refreshInterval: 15,
         showCategories: true,
+        showSocialFeed: true,
         showBookmarks: false,
         bookmarkedArticles: [],
         trackUsage: false
@@ -130,6 +131,7 @@
         setToggle('showFeaturedCard', currentSettings.showFeaturedCard);
         setToggle('showShortcuts', currentSettings.showShortcuts);
         setToggle('showCategories', currentSettings.showCategories);
+        setToggle('showSocialFeed', currentSettings.showSocialFeed);
         setToggle('autoRefresh', currentSettings.autoRefresh);
         setToggle('showSearchBar', currentSettings.showSearchBar);
         setToggle('showGreeting', currentSettings.showGreeting);
@@ -505,6 +507,7 @@
      */
     function setupFeedControls() {
         setupToggle('showCategories');
+        setupToggle('showSocialFeed');
         setupToggle('autoRefresh');
 
         document.getElementById('defaultCategory').addEventListener('change', (e) => {

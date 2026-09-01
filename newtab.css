@@ -55,7 +55,7 @@
     /* Shadows */
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
     --shadow-card: 0 2px 8px rgba(35, 25, 15, 0.04);
-    --shadow-card-hover: 0 10px 28px rgba(35, 25, 15, 0.08);
+    --shadow-card-hover: 0 20px 56px rgba(35, 25, 15, 0.16);
     --shadow-input-focus: 0 0 0 3px rgba(180, 105, 56, 0.18);
 
     /* Transitions */
@@ -88,7 +88,7 @@
     --accent-soft: rgba(224, 122, 75, 0.16);
 
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
-    --shadow-card-hover: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --shadow-card-hover: 0 24px 64px rgba(0, 0, 0, 0.65);
 }
 
 html {
@@ -483,7 +483,6 @@ a {
 }
 
 .article-card:hover {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-card-hover);
     border-color: var(--border-card-hover);
 }
@@ -504,10 +503,6 @@ a {
     object-fit: cover;
     display: block;
     transition: transform var(--duration-slow) var(--ease-out);
-}
-
-.article-card:hover .article-card__img {
-    transform: scale(1.05);
 }
 
 .article-card__body {
@@ -558,10 +553,6 @@ a {
     transition: color var(--duration-fast);
 }
 
-.article-card:hover .article-card__link-icon {
-    color: var(--accent);
-}
-
 .article-card__link-icon svg {
     width: 14px;
     height: 14px;
@@ -598,7 +589,6 @@ a {
 }
 
 .reel-card:hover {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-card-hover);
     border-color: var(--border-card-hover);
 }
@@ -621,10 +611,6 @@ a {
     transition: transform var(--duration-slow) var(--ease-out);
 }
 
-.reel-card:hover .reel-card__img {
-    transform: scale(1.04);
-}
-
 .reel-card__overlay {
     position: absolute;
     inset: 0;
@@ -645,11 +631,6 @@ a {
     justify-content: center;
     box-shadow: 0 4px 18px var(--accent-glow);
     transition: transform var(--duration-fast), box-shadow var(--duration-fast);
-}
-
-.reel-card:hover .reel-card__play-btn {
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow: 0 6px 24px rgba(230, 81, 0, 0.5);
 }
 
 .reel-card__play-btn svg {
@@ -720,10 +701,6 @@ a {
     transition: color var(--duration-fast);
 }
 
-.reel-card:hover .reel-card__link-icon {
-    color: var(--accent);
-}
-
 .reel-card__link-icon svg {
     width: 14px;
     height: 14px;
@@ -752,7 +729,6 @@ a {
 }
 
 .tweet-card:hover {
-    transform: translateY(-2px);
     box-shadow: var(--shadow-card-hover);
     border-color: var(--border-card-hover);
 }

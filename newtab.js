@@ -62,7 +62,8 @@
         customGreeting: '',
         articlesPerPage: 18,
         openLinksIn: 'newTab',
-        defaultCategory: ''
+        defaultCategory: '',
+        showSocialFeed: true
     };
 
     // ─── DOM refs ────────────────────────────────────────────────────────
@@ -390,6 +391,15 @@
 
     // ─── Card Builders ───────────────────────────────────────────────────
 
+    // API posts/stories often have image: null when the source is a YouTube
+    // video — derive the thumbnail from YouTube's CDN instead of falling
+    // straight through to the generic stock placeholder.
+    function getYouTubeThumbnail(url) {
+        if (!url) return null;
+        const match = url.match(/(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
+    }
+
     /**
      * Standard News Article Card
      */
@@ -399,7 +409,7 @@
 
         const sourceName = article.source || 'Google';
         const formattedDate = formatArticleDate(article.date || article.published_at || article.date_gmt);
-        const imageUrl = article.image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
+        const imageUrl = article.image || getYouTubeThumbnail(article.source_url) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
 
         card.innerHTML = `
             <div class="article-card__thumb">
@@ -451,7 +461,7 @@
 
         const sourceName = story.source || 'Google';
         const formattedDate = formatArticleDate(story.date || 'September 17, 2025');
-        const imageUrl = story.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80';
+        const imageUrl = story.image || getYouTubeThumbnail(story.video_url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80';
         const caption = story.caption || 'with a setting that you like.';
 
         card.innerHTML = `
@@ -492,15 +502,119 @@
         return card;
     }
 
+    // ─── Social Feed (X posts sidebar) ────────────────────────────────────
+    const X_LOGO_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+    const REPLY_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
+    const REPOST_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+    const LIKE_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>`;
+
+    function getInitial(name) {
+        return (name || '?').trim().charAt(0).toUpperCase() || '?';
+    }
+
+    function formatCompactNumber(n) {
+        return new Intl.NumberFormat('en', { notation: 'compact' }).format(n || 0);
+    }
+
+    function formatRelativeTime(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr.replace(' ', 'T'));
+        if (isNaN(date.getTime())) return '';
+
+        const diffSec = Math.round((date.getTime() - Date.now()) / 1000);
+        const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+        const units = [
+            ['year', 31536000], ['month', 2592000], ['week', 604800],
+            ['day', 86400], ['hour', 3600], ['minute', 60]
+        ];
+        for (const [unit, secInUnit] of units) {
+            if (Math.abs(diffSec) >= secInUnit) return rtf.format(Math.round(diffSec / secInUnit), unit);
+        }
+        return rtf.format(diffSec, 'second');
+    }
+
+    // ponytail: regex-based linkify, doesn't handle all edge cases (unicode
+    // word chars, trailing punctuation on URLs) — swap for a real tokenizer
+    // if tweet text starts rendering broken links.
+    function linkifyTweetText(text) {
+        let html = escapeHtml(text);
+        html = html.replace(/(^|[^\w@/])([#@]\w+)/g, '$1<span class="tweet-ticker">$2</span>');
+        html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="tweet-ticker">$1</a>');
+        return html;
+    }
+
+    function createTweetCard(post) {
+        const card = document.createElement('article');
+        card.className = 'tweet-card';
+
+        const profile = post.profile || {};
+        const name = profile.display_name || profile.username || 'Unknown';
+        const username = profile.username || '';
+        const metrics = post.metrics || {};
+
+        card.innerHTML = `
+            <div class="tweet-card__header">
+                <div class="tweet-card__author">
+                    <div class="tweet-card__avatar">${escapeHtml(getInitial(name))}</div>
+                    <div class="tweet-card__meta">
+                        <div class="tweet-card__name-row">
+                            <span class="tweet-card__name">${escapeHtml(name)}</span>
+                        </div>
+                        <div class="tweet-card__handle-row">
+                            <span>@${escapeHtml(username)}</span>
+                            <a class="tweet-card__follow" href="https://x.com/${encodeURIComponent(username)}" target="_blank" rel="noopener noreferrer">Follow</a>
+                        </div>
+                    </div>
+                </div>
+                <span class="tweet-card__x-logo">${X_LOGO_SVG}</span>
+            </div>
+            <div class="tweet-card__text">${linkifyTweetText(post.text || '')}</div>
+            <div class="tweet-card__time-row">
+                <span>${escapeHtml(formatRelativeTime(post.posted_at))}</span>
+            </div>
+            <div class="tweet-card__actions">
+                <span class="tweet-action">${REPLY_ICON_SVG}${formatCompactNumber(metrics.replies)}</span>
+                <span class="tweet-action">${REPOST_ICON_SVG}${formatCompactNumber(metrics.reposts)}</span>
+                <span class="tweet-action tweet-action--like">${LIKE_ICON_SVG}${formatCompactNumber(metrics.likes)}</span>
+            </div>
+            <a class="tweet-card__read-more" href="${escapeHtml(post.url || '#')}" target="_blank" rel="noopener noreferrer">Read more on X</a>
+        `;
+
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return;
+            const target = settings.openLinksIn === 'sameTab' ? '_self' : '_blank';
+            window.open(post.url, target);
+        });
+
+        return card;
+    }
+
     /**
-     * Renders Curated Social Cards in the Right Sidebar.
-     * No live social feed source exists yet, so the sidebar is hidden rather
-     * than showing fabricated posts. Wire this up to a real API_BASE/social
-     * endpoint once one exists.
+     * Renders curated X post cards in the right sidebar, sourced from the
+     * background service worker's cached /x-posts feed.
      */
-    function renderSocialFeed() {
-        if (!socialFeedEl) return;
-        socialFeedEl.closest('.sidebar-column')?.style.setProperty('display', 'none');
+    async function renderSocialFeed() {
+        const sidebar = socialFeedEl?.closest('.sidebar-column');
+        if (!socialFeedEl || !sidebar) return;
+
+        if (!settings.showSocialFeed) {
+            sidebar.style.setProperty('display', 'none');
+            return;
+        }
+
+        try {
+            const response = await chrome.runtime.sendMessage({ type: 'GET_SOCIAL_FEED', page: 1, perPage: 6 });
+            const items = response?.items || [];
+            if (!response?.success || items.length === 0) {
+                sidebar.style.setProperty('display', 'none');
+                return;
+            }
+            sidebar.style.removeProperty('display');
+            socialFeedEl.innerHTML = '';
+            items.forEach(post => socialFeedEl.appendChild(createTweetCard(post)));
+        } catch (e) {
+            sidebar.style.setProperty('display', 'none');
+        }
     }
 
     // ─── Fetch News Articles ─────────────────────────────────────────────
@@ -662,6 +776,7 @@
                     applySettings();
                     setGreeting();
                     fetchNews(1);
+                    renderSocialFeed();
                 }
             });
         }

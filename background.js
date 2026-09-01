@@ -21,8 +21,17 @@
 /** Base URL for the CoffeeBrk public REST API. */
 const API_BASE = 'https://app.coffeebrk.ai/wp-json/coffeebrk/v1/public';
 
+/** Base URL for the CoffeeBrk Core X-posts REST API. */
+const SOCIAL_API_BASE = 'https://app.coffeebrk.ai/wp-json/coffeebrk/v1';
+
+/** Bearer token for the Core X-posts API — generated in Core → API admin page. */
+const SOCIAL_API_TOKEN = 'cbk_DpmJd-TmT3P_Xz0oRGr3iydzkqY4zAoileEIXZ3IRrk';
+
 /** In-memory cache TTL in milliseconds (5 minutes). */
 const CACHE_DURATION = 5 * 60 * 1000;
+
+/** Social feed cache TTL in milliseconds (30 minutes) — Core syncs on a slow cadence. */
+const SOCIAL_CACHE_DURATION = 30 * 60 * 1000;
 
 /** Name of the periodic alarm used to refresh the cache. */
 const ALARM_NAME = 'refreshCache';
@@ -83,6 +92,7 @@ const DEFAULT_SETTINGS = {
     autoRefresh: true,
     refreshInterval: 15,      // minutes
     showCategories: true,
+    showSocialFeed: true,
 
     // ── Bookmarks ──────────────────────────────────────────────────────────
     showBookmarks: false,
@@ -126,12 +136,13 @@ const cache = new Map();
 /**
  * Returns cached data for the given key if it has not yet expired.
  *
- * @param  {string}        key  Cache key.
+ * @param  {string}        key         Cache key.
+ * @param  {number}        [ttl]       Override for CACHE_DURATION.
  * @returns {Promise<any|null>} Cached data, or null if absent / stale.
  */
-async function getCachedData(key) {
+async function getCachedData(key, ttl = CACHE_DURATION) {
     const cached = cache.get(key);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    if (cached && Date.now() - cached.timestamp < ttl) {
         return cached.data;
     }
     return null;
@@ -202,6 +213,11 @@ async function handleMessage(message, sender, sendResponse) {
                 sendResponse({ success: true, categories });
                 break;
             }
+            case 'GET_SOCIAL_FEED': {
+                const feed = await fetchSocialFeed(message.page, message.perPage);
+                sendResponse({ success: true, ...feed });
+                break;
+            }
             case 'BOOKMARK_ARTICLE': {
                 const bookmarks = await toggleBookmark(message.article);
                 sendResponse({ success: true, bookmarks });
@@ -266,6 +282,30 @@ async function fetchCategories() {
     if (cached) return cached;
 
     const response = await fetch(`${API_BASE}/categories`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    await setCachedData(cacheKey, data);
+    return data;
+}
+
+/**
+ * Fetches a page of X posts from the CoffeeBrk Core API, using the in-memory
+ * cache (30-minute TTL, since Core only syncs from source on a slow cadence).
+ *
+ * @param  {number} [page=1]     1-based page number.
+ * @param  {number} [perPage=6]  Items per page.
+ * @returns {Promise<Object>}    API response body (items, total_pages, …).
+ * @throws {Error}               Re-throws on non-OK HTTP status.
+ */
+async function fetchSocialFeed(page = 1, perPage = 6) {
+    const cacheKey = `social_${page}_${perPage}`;
+    const cached = await getCachedData(cacheKey, SOCIAL_CACHE_DURATION);
+    if (cached) return cached;
+
+    const response = await fetch(`${SOCIAL_API_BASE}/x-posts?page=${page}&per_page=${perPage}`, {
+        headers: { Authorization: `Bearer ${SOCIAL_API_TOKEN}` }
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
