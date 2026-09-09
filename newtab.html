@@ -7,54 +7,61 @@
     <meta name="description" content="Your personalized new tab with search and the latest tech news from CoffeeBrk.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600;1,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600;1,700;1,800&family=Poppins:wght@400;500;600&family=Sora:wght@600&family=Plus+Jakarta+Sans:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="newtab.css">
 </head>
 <body>
-    <!-- ===== TOP BAR ===== -->
-    <header class="top-bar">
-        <div class="brand">
-            <a href="https://coffeebrk.ai" target="_blank" title="CoffeeBrk.ai">
-                <img src="icons/Coffee-Logo-AI-1-1-300x144.webp" alt="CoffeeBrk" class="brand-logo">
-            </a>
-        </div>
-        <div id="greeting" class="greeting">
-            <span class="greeting-lead">Welcome back,</span>
-            <span class="greeting-name" id="user-name-display">Hasan</span>
-            <span class="greeting-wave">👋</span>
-        </div>
-        <div class="top-bar__actions">
-            <a href="options.html" class="profile-btn" title="Settings & Profile" aria-label="Settings">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-            </a>
-        </div>
-    </header>
+    <!-- ===== HERO BANNER (image background) ===== -->
+    <div class="hero-banner">
+        <img class="hero-banner__bg" src="assets/hero image.png" alt="" />
 
-    <!-- ===== HERO / SEARCH ===== -->
-    <section class="hero" id="search-section">
-        <form id="search-form" class="search-box" action="https://www.google.com/search" method="GET" autocomplete="off">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input id="search-input" type="text" name="q" placeholder="Search the Web" autofocus>
-            <div class="search-engine-badge" id="search-engine-badge" title="Search with Google">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                </svg>
+        <!-- ===== TOP BAR ===== -->
+        <header class="top-bar">
+            <div class="brand">
+                <a href="https://coffeebrk.ai" target="_blank" title="CoffeeBrk.ai">
+                    <img src="icons/Coffee-Logo-AI-1-1-300x144.webp" alt="CoffeeBrk" class="brand-logo">
+                </a>
             </div>
-        </form>
-    </section>
+            <div id="greeting" class="greeting">
+                <span class="greeting-lead">Welcome back,</span>
+                <span class="greeting-name" id="user-name-display">Hasan</span>
+                <span class="greeting-wave">👋</span>
+            </div>
+            <div class="top-bar__actions">
+                <a href="options.html" class="profile-btn" title="Settings & Profile" aria-label="Settings">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                </a>
+            </div>
+        </header>
 
-    <!-- ===== QUICK SHORTCUTS ===== -->
-    <section class="shortcuts" id="shortcuts-section">
-        <!-- Populated dynamically from user-prefixed or most-visited shortcuts -->
-    </section>
+        <!-- ===== SEARCH & SHORTCUTS FLOATING CARD ===== -->
+        <div class="hero-glass-card">
+            <section class="hero" id="search-section">
+                <form id="search-form" class="search-box" action="https://www.google.com/search" method="GET" autocomplete="off">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input id="search-input" type="text" name="q" placeholder="Search the Web" autofocus>
+                    <div class="search-engine-badge" id="search-engine-badge" title="Search with Google">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                        </svg>
+                    </div>
+                </form>
+            </section>
+
+            <!-- ===== QUICK SHORTCUTS ===== -->
+            <section class="shortcuts" id="shortcuts-section">
+                <!-- Populated dynamically from user-prefixed or most-visited shortcuts -->
+            </section>
+        </div>
+    </div>
 
     <!-- ===== MAIN CONTENT LAYOUT (2 COLUMNS) ===== -->
     <main class="main-layout">
