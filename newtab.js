@@ -1043,7 +1043,12 @@
             // allow-top-navigation) — this is what stops platforms like
             // Instagram from hijacking the tab when they don't recognize the
             // framing origin.
-            videoModalContent.innerHTML = `<iframe src="${embedUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
+            // scrolling left on (not "no"): platforms like Instagram serve
+            // widget content taller than our box (embed.js resizes its own
+            // nested iframe to fit). Letting this outer iframe scroll keeps
+            // that overflow reachable at one clean, predictable boundary
+            // instead of trapped in an inner iframe we can't see or style.
+            videoModalContent.innerHTML = `<iframe src="${embedUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
         } else {
             videoModalContent.innerHTML = `
                 <div class="video-modal__unavailable">
