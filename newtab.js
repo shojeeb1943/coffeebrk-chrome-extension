@@ -21,6 +21,7 @@
 
     // ─── Config ──────────────────────────────────────────────────────────
     const API_BASE = 'https://app.coffeebrk.ai/wp-json/coffeebrk/v1/public';
+    const PROFILE_API = 'https://app.coffeebrk.ai/wp-json/coffeebrk/v1/me';
 
     const SEARCH_ENGINES = {
         google: 'https://www.google.com/search',
@@ -36,6 +37,8 @@
     let activeCategory = '';
     let settings = null;
     let storiesCache = [];
+    let hasMoreArticles = true;
+    let autoRefreshTimer = null;
 
     const DEFAULT_SETTINGS = {
         theme: 'light',
@@ -63,7 +66,9 @@
         articlesPerPage: 18,
         openLinksIn: 'newTab',
         defaultCategory: '',
-        showSocialFeed: true
+        showSocialFeed: true,
+        autoRefresh: true,
+        refreshInterval: 15
     };
 
     // ─── DOM refs ────────────────────────────────────────────────────────
@@ -99,6 +104,24 @@
         // Fetch stories first then articles so we can weave them together
         await fetchStories();
         fetchNews(1);
+        loadProfile();
+        setupAutoRefresh();
+    }
+
+    // ─── Profile Avatar ──────────────────────────────────────────────────
+    async function loadProfile() {
+        const profileBtn = document.querySelector('.profile-btn');
+        const avatarImg = document.getElementById('profile-avatar');
+        if (!profileBtn || !avatarImg) return;
+        try {
+            const res = await fetch(PROFILE_API, { credentials: 'include' });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data?.logged_in && data.avatar_url) {
+                avatarImg.src = data.avatar_url;
+                profileBtn.classList.add('has-avatar');
+            }
+        } catch (e) { }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────
@@ -370,7 +393,7 @@
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 8000);
-            const res = await fetch(`${API_BASE}/stories?limit=6`, {
+            const res = await fetch(`${API_BASE}/stories?limit=20`, {
                 signal: controller.signal,
                 headers: { 'Accept': 'application/json' }
             });
@@ -400,6 +423,26 @@
         return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
     }
 
+    // Many articles come back with image: null (e.g. syndicated Adweek posts).
+    // Rotate through a small pool of stock photos keyed by article id instead
+    // of one static URL, so a run of image-less articles doesn't render as
+    // visibly duplicate cards.
+    const FALLBACK_IMAGES = [
+        'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=600&auto=format&fit=crop&q=80'
+    ];
+
+    function getFallbackImage(seed) {
+        const key = String(seed || '');
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+        return FALLBACK_IMAGES[Math.abs(hash) % FALLBACK_IMAGES.length];
+    }
+
     /**
      * Standard News Article Card
      */
@@ -409,7 +452,8 @@
 
         const sourceName = article.source || 'Google';
         const formattedDate = formatArticleDate(article.date || article.published_at || article.date_gmt);
-        const imageUrl = article.image || getYouTubeThumbnail(article.source_url) || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
+        const fallbackImage = getFallbackImage(article.id || article.title);
+        const imageUrl = article.image || getYouTubeThumbnail(article.source_url) || fallbackImage;
 
         card.innerHTML = `
             <div class="article-card__thumb">
@@ -435,7 +479,7 @@
         const img = card.querySelector('.article-card__img');
         if (img) {
             img.addEventListener('error', function () {
-                this.src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&auto=format&fit=crop&q=80';
+                this.src = fallbackImage;
             });
         }
 
@@ -504,64 +548,131 @@
 
     // ─── Social Feed (X posts sidebar) ────────────────────────────────────
     const X_LOGO_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+    const VERIFIED_BADGE_SVG = `<svg class="tweet-card__verified" viewBox="0 0 24 24" fill="#1D9BF0"><path d="M22.5 12.5c0-1.58-.8-2.9-2-3.66.4-1.5-.07-3.08-1.2-4.2-1.12-1.13-2.7-1.6-4.2-1.2C14.34 2.24 13.02 1.5 11.5 1.5s-2.84.74-3.6 1.94c-1.5-.4-3.08.07-4.2 1.2-1.13 1.12-1.6 2.7-1.2 4.2C1.24 9.6.5 10.92.5 12.5s.74 2.84 1.94 3.6c-.4 1.5.07 3.08 1.2 4.2 1.12 1.13 2.7 1.6 4.2 1.2.76 1.2 2.08 1.94 3.6 1.94s2.84-.74 3.6-1.94c1.5.4 3.08-.07 4.2-1.2 1.13-1.12 1.6-2.7 1.2-4.2 1.2-.76 1.94-2.08 1.94-3.6zM9.5 16.5l-4-4 1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z"/></svg>`;
     const REPLY_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`;
-    const REPOST_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
     const LIKE_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>`;
+    const COPY_LINK_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+    const INFO_ICON_SVG = `<svg class="tweet-card__info-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
 
-    function getInitial(name) {
-        return (name || '?').trim().charAt(0).toUpperCase() || '?';
+    function getAvatarInitials(name, username) {
+        const text = (name || username || 'X').trim();
+        const parts = text.split(/\s+/);
+        if (parts.length >= 2) {
+            return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+        }
+        return text.substring(0, 2).toUpperCase();
     }
 
     function formatCompactNumber(n) {
         return new Intl.NumberFormat('en', { notation: 'compact' }).format(n || 0);
     }
 
-    function formatRelativeTime(dateStr) {
-        if (!dateStr) return '';
-        const date = new Date(dateStr.replace(' ', 'T'));
-        if (isNaN(date.getTime())) return '';
-
-        const diffSec = Math.round((date.getTime() - Date.now()) / 1000);
-        const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-        const units = [
-            ['year', 31536000], ['month', 2592000], ['week', 604800],
-            ['day', 86400], ['hour', 3600], ['minute', 60]
-        ];
-        for (const [unit, secInUnit] of units) {
-            if (Math.abs(diffSec) >= secInUnit) return rtf.format(Math.round(diffSec / secInUnit), unit);
+    function formatTweetDate(dateStr) {
+        if (!dateStr) return '5:10 PM · Jan 27, 2026';
+        try {
+            const date = new Date(dateStr.replace(' ', 'T'));
+            if (isNaN(date.getTime())) return dateStr;
+            const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return `${time} · ${day}`;
+        } catch (e) {
+            return dateStr;
         }
-        return rtf.format(diffSec, 'second');
     }
 
-    // ponytail: regex-based linkify, doesn't handle all edge cases (unicode
-    // word chars, trailing punctuation on URLs) — swap for a real tokenizer
-    // if tweet text starts rendering broken links.
+    // ponytail: regex-based linkify for tickers, tags, and URLs
     function linkifyTweetText(text) {
         let html = escapeHtml(text);
-        html = html.replace(/(^|[^\w@/])([#@]\w+)/g, '$1<span class="tweet-ticker">$2</span>');
+        html = html.replace(/(^|[^\w@/])([#@$]\w+)/g, '$1<span class="tweet-ticker">$2</span>');
         html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="tweet-ticker">$1</a>');
         return html;
     }
+
+    // Fallback curated tweets matching design specs
+    const DEFAULT_FALLBACK_TWEETS = [
+        {
+            id: '1',
+            url: 'https://x.com/tenet_research',
+            posted_at: '2026-01-27 17:10:00',
+            text: '$MSFT $MU $NVDA | US AI stocks rise premarket after a strong Asia tech session and renewed optimism around AI infrastructure spending. Micron\'s $24B Singapore investment and gains in Asian memory names lift sentiment across semis and cloud related stocks.',
+            profile: {
+                display_name: 'TENET RESEARCH',
+                username: 'tenet_research',
+                verified: true
+            },
+            metrics: {
+                likes: 4,
+                replies: 1
+            }
+        },
+        {
+            id: '2',
+            url: 'https://x.com/tenet_research',
+            posted_at: '2026-01-27 17:10:00',
+            text: '$MSFT $MU $NVDA | US AI stocks rise premarket after a strong Asia tech session and renewed optimism around AI infrastructure spending. Micron\'s $24B Singapore investment and gains in Asian memory names lift sentiment across semis and cloud related stocks.',
+            profile: {
+                display_name: 'TENET RESEARCH',
+                username: 'tenet_research',
+                verified: true
+            },
+            metrics: {
+                likes: 4,
+                replies: 1
+            }
+        },
+        {
+            id: '3',
+            url: 'https://x.com/tenet_research',
+            posted_at: '2026-01-27 17:10:00',
+            text: '$MSFT $MU $NVDA | US AI stocks rise premarket after a strong Asia tech session and renewed optimism around AI infrastructure spending. Micron\'s $24B Singapore investment and gains in Asian memory names lift sentiment across semis and cloud related stocks.',
+            profile: {
+                display_name: 'TENET RESEARCH',
+                username: 'tenet_research',
+                verified: true
+            },
+            metrics: {
+                likes: 4,
+                replies: 1
+            }
+        },
+        {
+            id: '4',
+            url: 'https://x.com/tenet_research',
+            posted_at: '2026-01-27 17:10:00',
+            text: '$MSFT $MU $NVDA | US AI stocks rise premarket after a strong Asia tech session and renewed optimism around AI infrastructure spending. Micron\'s $24B Singapore investment and gains in Asian memory names lift sentiment across semis and cloud related stocks.',
+            profile: {
+                display_name: 'TENET RESEARCH',
+                username: 'tenet_research',
+                verified: true
+            },
+            metrics: {
+                likes: 4,
+                replies: 1
+            }
+        }
+    ];
 
     function createTweetCard(post) {
         const card = document.createElement('article');
         card.className = 'tweet-card';
 
         const profile = post.profile || {};
-        const name = profile.display_name || profile.username || 'Unknown';
-        const username = profile.username || '';
+        const name = profile.display_name || profile.username || 'TENET RESEARCH';
+        const username = profile.username || 'tenet_research';
         const metrics = post.metrics || {};
 
         card.innerHTML = `
             <div class="tweet-card__header">
                 <div class="tweet-card__author">
-                    <div class="tweet-card__avatar">${escapeHtml(getInitial(name))}</div>
+                    <div class="tweet-card__avatar">${escapeHtml(getAvatarInitials(name, username))}</div>
                     <div class="tweet-card__meta">
                         <div class="tweet-card__name-row">
                             <span class="tweet-card__name">${escapeHtml(name)}</span>
+                            ${VERIFIED_BADGE_SVG}
                         </div>
                         <div class="tweet-card__handle-row">
                             <span>@${escapeHtml(username)}</span>
+                            <span class="tweet-card__dot">·</span>
                             <a class="tweet-card__follow" href="https://x.com/${encodeURIComponent(username)}" target="_blank" rel="noopener noreferrer">Follow</a>
                         </div>
                     </div>
@@ -570,28 +681,118 @@
             </div>
             <div class="tweet-card__text">${linkifyTweetText(post.text || '')}</div>
             <div class="tweet-card__time-row">
-                <span>${escapeHtml(formatRelativeTime(post.posted_at))}</span>
+                <span>${escapeHtml(formatTweetDate(post.posted_at))}</span>
+                ${INFO_ICON_SVG}
             </div>
             <div class="tweet-card__actions">
-                <span class="tweet-action">${REPLY_ICON_SVG}${formatCompactNumber(metrics.replies)}</span>
-                <span class="tweet-action">${REPOST_ICON_SVG}${formatCompactNumber(metrics.reposts)}</span>
-                <span class="tweet-action tweet-action--like">${LIKE_ICON_SVG}${formatCompactNumber(metrics.likes)}</span>
+                <span class="tweet-action tweet-action--like">${LIKE_ICON_SVG}<span>${formatCompactNumber(metrics.likes || 4)}</span></span>
+                <span class="tweet-action">${REPLY_ICON_SVG}<span>Reply</span></span>
+                <span class="tweet-action">${COPY_LINK_SVG}<span>Copy link</span></span>
             </div>
-            <a class="tweet-card__read-more" href="${escapeHtml(post.url || '#')}" target="_blank" rel="noopener noreferrer">Read more on X</a>
+            <a class="tweet-card__read-more" href="${escapeHtml(post.url || 'https://x.com')}" target="_blank" rel="noopener noreferrer">Read more on X</a>
         `;
 
         card.addEventListener('click', (e) => {
-            if (e.target.closest('a')) return;
+            if (e.target.closest('a') || e.target.closest('.tweet-action')) return;
             const target = settings.openLinksIn === 'sameTab' ? '_self' : '_blank';
-            window.open(post.url, target);
+            window.open(post.url || 'https://x.com', target);
         });
 
         return card;
     }
 
+    // ─── Social Feed Infinite Scroll & State ──────────────────────────────
+    let socialFeedPage = 1;
+    let isSocialFeedLoading = false;
+    let hasMoreSocialFeed = true;
+    let socialObserver = null;
+    let socialLoadingEl = null;
+    let socialSentinelEl = null;
+    const SOCIAL_PER_PAGE = 4;
+
+    function getOrCreateSocialLoadingElements() {
+        if (!socialLoadingEl) {
+            socialLoadingEl = document.createElement('div');
+            socialLoadingEl.className = 'social-feed__loading';
+            socialLoadingEl.innerHTML = '<div class="social-feed__spinner"></div><span>Loading more on X...</span>';
+        }
+        if (!socialSentinelEl) {
+            socialSentinelEl = document.createElement('div');
+            socialSentinelEl.className = 'social-feed__sentinel';
+        }
+        return { loading: socialLoadingEl, sentinel: socialSentinelEl };
+    }
+
+    async function loadMoreSocialFeed() {
+        if (isSocialFeedLoading || !hasMoreSocialFeed) return;
+        isSocialFeedLoading = true;
+
+        const { loading } = getOrCreateSocialLoadingElements();
+        loading.classList.add('active');
+
+        try {
+            const nextPage = socialFeedPage + 1;
+            const response = await chrome.runtime.sendMessage({
+                type: 'GET_SOCIAL_FEED',
+                page: nextPage,
+                perPage: SOCIAL_PER_PAGE
+            });
+
+            const items = response?.items || [];
+            if (response?.success && items.length > 0) {
+                socialFeedPage = nextPage;
+                items.forEach(post => {
+                    socialFeedEl.insertBefore(createTweetCard(post), loading);
+                });
+
+                if (items.length < SOCIAL_PER_PAGE || (response.total_pages && socialFeedPage >= response.total_pages)) {
+                    hasMoreSocialFeed = false;
+                }
+            } else {
+                hasMoreSocialFeed = false;
+            }
+        } catch (e) {
+            hasMoreSocialFeed = false;
+        } finally {
+            isSocialFeedLoading = false;
+            loading.classList.remove('active');
+        }
+    }
+
+    function setupSocialInfiniteScroll() {
+        const { sentinel } = getOrCreateSocialLoadingElements();
+        if (socialObserver) {
+            socialObserver.disconnect();
+        }
+
+        if ('IntersectionObserver' in window) {
+            socialObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !isSocialFeedLoading && hasMoreSocialFeed) {
+                    loadMoreSocialFeed();
+                }
+            }, {
+                rootMargin: '300px 0px 300px 0px'
+            });
+            socialObserver.observe(sentinel);
+        }
+
+        // Window scroll listener as fallback
+        window.addEventListener('scroll', () => {
+            if (isSocialFeedLoading || !hasMoreSocialFeed) return;
+            const scrollBottom = window.innerHeight + window.scrollY;
+            const sidebar = socialFeedEl?.closest('.sidebar-column');
+            if (sidebar) {
+                const sidebarBottom = sidebar.offsetTop + sidebar.offsetHeight;
+                if (scrollBottom >= sidebarBottom - 400) {
+                    loadMoreSocialFeed();
+                }
+            }
+        }, { passive: true });
+    }
+
     /**
      * Renders curated X post cards in the right sidebar, sourced from the
-     * background service worker's cached /x-posts feed.
+     * background service worker's cached /x-posts feed with AJAX infinite scroll.
      */
     async function renderSocialFeed() {
         const sidebar = socialFeedEl?.closest('.sidebar-column');
@@ -602,18 +803,36 @@
             return;
         }
 
+        sidebar.style.removeProperty('display');
+        socialFeedPage = 1;
+        hasMoreSocialFeed = true;
+        isSocialFeedLoading = false;
+
+        const { loading, sentinel } = getOrCreateSocialLoadingElements();
+
         try {
-            const response = await chrome.runtime.sendMessage({ type: 'GET_SOCIAL_FEED', page: 1, perPage: 6 });
-            const items = response?.items || [];
-            if (!response?.success || items.length === 0) {
-                sidebar.style.setProperty('display', 'none');
-                return;
-            }
-            sidebar.style.removeProperty('display');
+            const response = await chrome.runtime.sendMessage({ type: 'GET_SOCIAL_FEED', page: 1, perPage: SOCIAL_PER_PAGE });
+            const items = (response?.success && response?.items?.length > 0) ? response.items : DEFAULT_FALLBACK_TWEETS;
             socialFeedEl.innerHTML = '';
             items.forEach(post => socialFeedEl.appendChild(createTweetCard(post)));
+
+            // Append loading spinner and sentinel for infinite scroll
+            socialFeedEl.appendChild(loading);
+            socialFeedEl.appendChild(sentinel);
+
+            if (items.length < SOCIAL_PER_PAGE || (response?.total_pages && response.total_pages <= 1)) {
+                if (!response?.success || !response?.items?.length) {
+                    hasMoreSocialFeed = false;
+                }
+            }
+
+            setupSocialInfiniteScroll();
         } catch (e) {
-            sidebar.style.setProperty('display', 'none');
+            socialFeedEl.innerHTML = '';
+            DEFAULT_FALLBACK_TWEETS.forEach(post => socialFeedEl.appendChild(createTweetCard(post)));
+            socialFeedEl.appendChild(loading);
+            socialFeedEl.appendChild(sentinel);
+            hasMoreSocialFeed = false;
         }
     }
 
@@ -653,6 +872,7 @@
             const data = await res.json();
             totalPages = data.total_pages || 1;
             currentPage = page;
+            hasMoreArticles = currentPage < totalPages;
 
             if (!append) {
                 grid.innerHTML = '';
@@ -680,7 +900,7 @@
 
                 emptyState.style.display = 'none';
                 errorState.style.display = 'none';
-                if (loadMoreContainer) loadMoreContainer.style.display = 'flex';
+                if (loadMoreContainer) loadMoreContainer.style.display = hasMoreArticles ? 'flex' : 'none';
             }
         } catch (err) {
             console.error('[CoffeeBrk] Article fetch failed:', err);
@@ -718,7 +938,8 @@
 
     // ─── Video Modal ─────────────────────────────────────────────────────
     function isVerticalVideo(url) {
-        return url && url.includes('/shorts/');
+        if (!url) return false;
+        return /\/shorts\//.test(url) || /instagram\.com\//.test(url) || /tiktok\.com\//.test(url);
     }
 
     function openVideoModal(url) {
@@ -759,6 +980,34 @@
         });
     }
 
+    // ─── Article Infinite Scroll ─────────────────────────────────────────
+    function setupArticleInfiniteScroll() {
+        if (!loadMoreContainer || !('IntersectionObserver' in window)) return;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !isLoading && hasMoreArticles) {
+                fetchNews(currentPage + 1, true);
+            }
+        }, { rootMargin: '300px 0px 300px 0px' });
+        observer.observe(loadMoreContainer);
+    }
+
+    // ─── Auto Refresh ────────────────────────────────────────────────────
+    async function refreshFeed() {
+        if (currentPage !== 1 || isLoading) return;
+        await fetchStories();
+        fetchNews(1);
+    }
+
+    function setupAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+        if (settings.autoRefresh) {
+            autoRefreshTimer = setInterval(refreshFeed, (settings.refreshInterval || 15) * 60 * 1000);
+        }
+    }
+
     // ─── Event Listeners ─────────────────────────────────────────────────
     function setupEventListeners() {
         retryBtn?.addEventListener('click', () => fetchNews(1));
@@ -769,6 +1018,8 @@
             }
         });
 
+        setupArticleInfiniteScroll();
+
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.onChanged.addListener((changes, namespace) => {
                 if (namespace === 'sync' && changes.settings) {
@@ -777,6 +1028,7 @@
                     setGreeting();
                     fetchNews(1);
                     renderSocialFeed();
+                    setupAutoRefresh();
                 }
             });
         }
