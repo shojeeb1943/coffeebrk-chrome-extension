@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "CoffeeBrk — New Tab",
+  "name": "CoffeeBrk",
   "short_name": "CoffeeBrk",
   "version": "1.2.0",
   "description": "Your personalized new tab with Google search, quick shortcuts, customizable widgets, and the latest tech news curated by AI. Stay productive and informed.",
@@ -46,7 +46,7 @@
   ],
 
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://app.coffeebrk.ai https://*.coffeebrk.ai; frame-src https://app.coffeebrk.ai;"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://app.coffeebrk.ai https://*.coffeebrk.ai https://www.tiktok.com; frame-src https://app.coffeebrk.ai;"
   },
 
   "web_accessible_resources": [

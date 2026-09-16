@@ -1,4 +1,4 @@
-# CoffeeBrk — New Tab Chrome Extension
+# CoffeeBrk Chrome Extension
 
 A premium, feature-rich Chrome extension that replaces your new tab page with a beautiful, functional dashboard.
 
