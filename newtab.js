@@ -87,6 +87,8 @@
     const videoModalContent = document.getElementById('video-modal-content');
     const videoModalClose = document.querySelector('.video-modal__close');
     const videoModalBackdrop = document.querySelector('.video-modal__backdrop');
+    const videoModalPrevBtn = document.querySelector('.video-modal__nav--prev');
+    const videoModalNextBtn = document.querySelector('.video-modal__nav--next');
     const loadMoreContainer = document.getElementById('load-more-container');
     const loadMoreBtn = document.getElementById('load-more-btn');
     const loadMoreText = loadMoreBtn?.querySelector('.load-more-text');
@@ -564,7 +566,13 @@
 
         card.addEventListener('click', () => {
             if (story.video_url) {
-                openVideoModal(story.video_url);
+                const idx = storiesCache.indexOf(story);
+                if (idx !== -1) {
+                    showStoryAt(idx);
+                } else {
+                    currentStoryIndex = -1;
+                    openVideoModal(story.video_url);
+                }
             } else {
                 window.open('https://coffeebrk.ai', '_blank');
             }
@@ -969,6 +977,34 @@
         return /\/shorts\//.test(url) || /instagram\.com\//.test(url) || /tiktok\.com\//.test(url);
     }
 
+    // TikTok/Instagram embed pages ship extra chrome (caption, like/share
+    // counts, "watch on..." banner) around the video, unlike YouTube's bare
+    // player — give those platforms a taller box instead of the strict 9:16
+    // video-only ratio so their own internal scrollbar isn't needed.
+    function isWidgetEmbed(url) {
+        return /tiktok\.com\//.test(url) || /instagram\.com\//.test(url);
+    }
+
+    let currentStoryIndex = -1;
+
+    function updateVideoNavButtons() {
+        const hasMultiple = currentStoryIndex >= 0 && storiesCache.length > 1;
+        if (videoModalPrevBtn) {
+            videoModalPrevBtn.classList.toggle('video-modal__nav--hidden', !hasMultiple);
+            videoModalPrevBtn.disabled = currentStoryIndex <= 0;
+        }
+        if (videoModalNextBtn) {
+            videoModalNextBtn.classList.toggle('video-modal__nav--hidden', !hasMultiple);
+            videoModalNextBtn.disabled = currentStoryIndex < 0 || currentStoryIndex >= storiesCache.length - 1;
+        }
+    }
+
+    function showStoryAt(index) {
+        if (index < 0 || index >= storiesCache.length) return;
+        currentStoryIndex = index;
+        openVideoModal(storiesCache[index].video_url);
+    }
+
     async function openVideoModal(url) {
         const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
@@ -981,10 +1017,12 @@
             videoModalContent.classList.add('landscape');
             container?.classList.add('landscape');
         }
+        videoModalContent.classList.toggle('widget-embed', isWidgetEmbed(url));
 
         videoModalContent.innerHTML = '';
         videoModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        updateVideoNavButtons();
 
         // The backend embed proxy only supports some platforms (e.g. YouTube)
         // today — it returns a JSON error for others (TikTok/Instagram), which
@@ -999,7 +1037,13 @@
         if (!videoModal.classList.contains('active')) return; // closed while checking
 
         if (canEmbed) {
-            videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
+            // Sandboxed so embedded content can play (scripts) and let the
+            // user open an explicit "view on X" link as a normal popup, but
+            // can never navigate our own top-level page away (no
+            // allow-top-navigation) — this is what stops platforms like
+            // Instagram from hijacking the tab when they don't recognize the
+            // framing origin.
+            videoModalContent.innerHTML = `<iframe src="${embedUrl}" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
         } else {
             videoModalContent.innerHTML = `
                 <div class="video-modal__unavailable">
@@ -1013,6 +1057,7 @@
     function closeVideoModal() {
         videoModal.classList.remove('active');
         document.body.style.overflow = '';
+        currentStoryIndex = -1;
         setTimeout(() => {
             videoModalContent.innerHTML = '';
         }, 300);
@@ -1022,10 +1067,17 @@
         if (!videoModal) return;
         videoModalClose?.addEventListener('click', closeVideoModal);
         videoModalBackdrop?.addEventListener('click', closeVideoModal);
+        videoModalPrevBtn?.addEventListener('click', () => showStoryAt(currentStoryIndex - 1));
+        videoModalNextBtn?.addEventListener('click', () => showStoryAt(currentStoryIndex + 1));
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && videoModal.classList.contains('active')) {
+            if (!videoModal.classList.contains('active')) return;
+            if (e.key === 'Escape') {
                 closeVideoModal();
+            } else if (e.key === 'ArrowRight') {
+                showStoryAt(currentStoryIndex + 1);
+            } else if (e.key === 'ArrowLeft') {
+                showStoryAt(currentStoryIndex - 1);
             }
         });
     }

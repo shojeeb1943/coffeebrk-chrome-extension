@@ -1713,6 +1713,51 @@ a {
     height: 24px;
 }
 
+.video-modal__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast);
+    z-index: 10;
+}
+
+.video-modal__nav:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.video-modal__nav:disabled {
+    opacity: 0.25;
+    cursor: default;
+}
+
+.video-modal__nav--hidden {
+    display: none;
+}
+
+.video-modal__nav svg {
+    width: 22px;
+    height: 22px;
+}
+
+.video-modal__nav--prev {
+    left: -56px;
+}
+
+.video-modal__nav--next {
+    right: -56px;
+}
+
 .video-modal__content {
     position: relative;
     width: 100%;
@@ -1721,6 +1766,15 @@ a {
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+
+/* TikTok/Instagram embed pages include extra chrome (caption, like/share
+   counts, a "watch on..." banner) below the video itself, unlike YouTube's
+   bare player — give them more room than the strict 9:16 video ratio so
+   that content doesn't need its own internal scrollbar. */
+.video-modal__content.widget-embed {
+    aspect-ratio: unset;
+    height: min(85vh, 760px);
 }
 
 .video-modal__content iframe {
