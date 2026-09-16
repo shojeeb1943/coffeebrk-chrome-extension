@@ -436,6 +436,24 @@
         'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=600&auto=format&fit=crop&q=80'
     ];
 
+    // TikTok's public oEmbed endpoint returns a real per-video thumbnail
+    // (CORS-open, no auth) — used when a story has no image of its own.
+    async function getTikTokThumbnail(url) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.thumbnail_url || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function getFallbackImage(seed) {
         const key = String(seed || '');
         let hash = 0;
@@ -505,8 +523,9 @@
 
         const sourceName = story.source || 'Google';
         const formattedDate = formatArticleDate(story.date || 'September 17, 2025');
-        const imageUrl = story.image || getYouTubeThumbnail(story.video_url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80';
-        const caption = story.caption || 'with a setting that you like.';
+        const reelFallback = getFallbackImage(story.id || story.title);
+        const knownImage = story.image || getYouTubeThumbnail(story.video_url);
+        const imageUrl = knownImage || reelFallback;
 
         card.innerHTML = `
             <div class="reel-card__video-wrap">
@@ -517,7 +536,7 @@
                         <polygon points="6 4 20 12 6 20 6 4"/>
                     </svg>
                 </div>
-                <div class="reel-card__caption">${escapeHtml(caption)}</div>
+                ${story.caption ? `<div class="reel-card__caption">${escapeHtml(story.caption)}</div>` : ''}
             </div>
             <div class="reel-card__body">
                 <span class="reel-card__source">${escapeHtml(sourceName)}</span>
@@ -534,6 +553,14 @@
                 </div>
             </div>
         `;
+
+        // No image of our own and not a YouTube link — try TikTok's public
+        // oEmbed for a real thumbnail before settling for the static fallback.
+        if (!knownImage && story.video_url && story.video_url.includes('tiktok.com')) {
+            getTikTokThumbnail(story.video_url).then((thumb) => {
+                if (thumb) card.querySelector('.reel-card__img').src = thumb;
+            });
+        }
 
         card.addEventListener('click', () => {
             if (story.video_url) {
@@ -942,7 +969,7 @@
         return /\/shorts\//.test(url) || /instagram\.com\//.test(url) || /tiktok\.com\//.test(url);
     }
 
-    function openVideoModal(url) {
+    async function openVideoModal(url) {
         const embedUrl = `${API_BASE}/embed?url=${encodeURIComponent(url)}`;
         const isVertical = isVerticalVideo(url);
         const container = videoModal.querySelector('.video-modal__container');
@@ -955,9 +982,32 @@
             container?.classList.add('landscape');
         }
 
-        videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
+        videoModalContent.innerHTML = '';
         videoModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // The backend embed proxy only supports some platforms (e.g. YouTube)
+        // today — it returns a JSON error for others (TikTok/Instagram), which
+        // would otherwise render as a blank iframe. Check first and fall back
+        // to an "open externally" link instead of a broken player.
+        let canEmbed = false;
+        try {
+            const res = await fetch(embedUrl, { headers: { 'Accept': 'text/html' } });
+            canEmbed = res.ok && (res.headers.get('content-type') || '').includes('text/html');
+        } catch (e) { }
+
+        if (!videoModal.classList.contains('active')) return; // closed while checking
+
+        if (canEmbed) {
+            videoModalContent.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen scrolling="no"></iframe>`;
+        } else {
+            videoModalContent.innerHTML = `
+                <div class="video-modal__unavailable">
+                    <p>This video can't be played here yet.</p>
+                    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open original</a>
+                </div>
+            `;
+        }
     }
 
     function closeVideoModal() {

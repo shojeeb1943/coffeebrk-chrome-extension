@@ -1732,6 +1732,39 @@ a {
     border: none;
 }
 
+.video-modal__unavailable {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 32px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.video-modal__unavailable p {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.video-modal__unavailable a {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-full, 999px);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.video-modal__unavailable a:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
 /* ---------- RESPONSIVE BREAKPOINTS ---------- */
 @media (max-width: 1200px) {
     .main-layout {
